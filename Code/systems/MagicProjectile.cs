@@ -1,0 +1,225 @@
+using Sandbox;
+using MagicSystem;
+using System.Collections.Generic;
+using System;
+
+public sealed class MagicProjectile : Component
+{
+	private Vector3 _direction;
+	private GameObject _launcher;
+	private AttackProjectile _config;
+	private bool _launched = false;
+
+	private bool _isTracerMode = false;
+	private float _currentSpeed = 2500f;
+	private Vector3 _startPosition;
+
+	private HashSet<Guid> _hitTargetsThisSpawn = new HashSet<Guid>();
+
+	public void LaunchAsDirect( GameObject launcher, Vector3 direction, AttackProjectile config, float scale, float? overrideSpeed = null )
+	{
+		_launcher = launcher;
+		_config = config;
+		_isTracerMode = false;
+		_direction = direction.Normal;
+		_startPosition = GameObject.WorldPosition;
+
+		if ( overrideSpeed.HasValue )
+		{
+			_currentSpeed = overrideSpeed.Value;
+		}
+		else if ( config.MagicType == ProjectileType.Direct )
+		{
+			_currentSpeed = config.DirectMode.Speed;
+		}
+
+		var visuals = GameObject.Components.Get<ProjectileVisuals>( FindMode.EverythingInSelfAndChildren );
+		visuals?.SetupVisuals( config.MagicType, scale );
+
+		_launched = true;
+	}
+
+	public void LaunchAsMeteorTracer( GameObject launcher, Vector3 direction, AttackProjectile config )
+	{
+		_launcher = launcher;
+		_direction = direction.Normal;
+		_config = config;
+		_isTracerMode = true;
+		_currentSpeed = 150000f;
+		_startPosition = GameObject.WorldPosition;
+		_launched = true;
+
+		var visuals = GameObject.Components.Get<ProjectileVisuals>( FindMode.EverythingInSelfAndChildren );
+		visuals?.HideAll();
+	}
+
+	protected override void OnUpdate()
+	{
+		if ( !_launched || _config == null ) return;
+
+		if ( !_isTracerMode )
+		{
+			float travelDistance = Vector3.DistanceBetween( _startPosition, GameObject.WorldPosition );
+
+			if ( _config.MagicType == ProjectileType.Direct && travelDistance >= _config.DirectMode.MaxDistance )
+			{
+				TriggerAirExplosion();
+				return;
+			}
+		}
+
+		Vector3 currentPos = GameObject.WorldPosition;
+		Vector3 nextPosition = currentPos + _direction * _currentSpeed * Time.Delta;
+
+		if ( !_isTracerMode && _config.MagicType == ProjectileType.Meteor )
+		{
+			float radius = 16f * _config.MeteorMode.Scale;
+			var tr = Scene.PhysicsWorld.Trace
+				.Sphere( radius, GameObject.WorldPosition, nextPosition )
+				.WithoutTags( "projectile", "trigger" )
+				.Run();
+
+			if ( tr.Hit && tr.Body?.GameObject != null )
+			{
+				var hitGo = tr.Body.GameObject;
+
+				if ( hitGo == _launcher || hitGo.Root == _launcher?.Root )
+				{
+					tr.Hit = false;
+				}
+				else if ( hitGo.Tags.Has( "player" ) || hitGo.Tags.Has( "enemy" ) )
+				{
+					if ( _config.MeteorMode.HasDirectHit && hitGo.Tags.Has( "enemy" ) )
+					{
+						if ( !_hitTargetsThisSpawn.Contains( hitGo.Id ) )
+						{
+							_hitTargetsThisSpawn.Add( hitGo.Id );
+							var health = hitGo.Components.Get<HealthComponent>( FindMode.EverythingInSelfAndAncestors );
+							health?.TakeDamage( _config.MeteorMode.Damage, _launcher );
+						}
+					}
+					tr.Hit = false;
+				}
+			}
+
+			if ( tr.Hit ) { Impact( tr ); return; }
+		}
+		else
+		{
+			var tr = Scene.PhysicsWorld.Trace
+				.Ray( GameObject.WorldPosition, nextPosition )
+				.WithoutTags( "projectile", "trigger" )
+				.Run();
+
+			if ( tr.Hit ) { Impact( tr ); return; }
+		}
+
+		GameObject.WorldPosition = nextPosition;
+	}
+
+	private void TriggerAirExplosion()
+	{
+		PhysicsTraceResult airExplosionTrace = new PhysicsTraceResult
+		{
+			Hit = true,
+			EndPosition = GameObject.WorldPosition,
+			Normal = -_direction
+		};
+		Impact( airExplosionTrace );
+	}
+
+	private void Impact( PhysicsTraceResult tr )
+	{
+		GameObject hitTarget = tr.Body?.GameObject;
+
+		if ( hitTarget != null && (hitTarget == _launcher || hitTarget.Root == _launcher?.Root) ) return;
+
+		if ( _isTracerMode )
+		{
+			using ( Gizmo.Scope() ) { }
+			Vector3 targetFloorPos = tr.EndPosition;
+			Vector3 skySpawnPos = targetFloorPos + (Vector3.Up * _config.MeteorMode.SpawnHeight);
+			skySpawnPos -= _direction * (_config.MeteorMode.SpawnHeight * 0.4f);
+
+			Vector3 fallDirection = (targetFloorPos - skySpawnPos).Normal;
+			var meteorGo = _config.ProjectilePrefab.Clone( skySpawnPos, Rotation.LookAt( fallDirection ) );
+			var meteorScript = meteorGo.Components.Get<MagicProjectile>();
+
+			meteorScript?.LaunchAsDirect( _launcher, fallDirection, _config, _config.MeteorMode.Scale, _config.MeteorMode.FallSpeed );
+
+			GameObject.Destroy();
+			return;
+		}
+
+		if ( _config.MagicType == ProjectileType.Meteor && _config.MeteorMode.RollAfterImpact && _config.MeteorMode.RollingPrefab != null )
+		{
+			var currentVisuals = GameObject.Components.Get<ProjectileVisuals>( FindMode.EverythingInSelfAndChildren );
+			currentVisuals?.HideAll();
+
+			var rootRenderer = GameObject.Components.Get<ModelRenderer>();
+			if ( rootRenderer != null ) rootRenderer.Enabled = false;
+
+			Vector3 rollDir = new Vector3( _direction.x, _direction.y, 0 ).Normal;
+
+			var rollingGo = _config.MeteorMode.RollingPrefab.Clone( tr.EndPosition, Rotation.Identity );
+			rollingGo.WorldScale = _config.MeteorMode.Scale;
+
+			var rollingScript = rollingGo.Components.Get<MeteorRollingLogic>();
+			rollingScript?.InitializeRoll(
+				_launcher,
+				rollDir,
+				_config.MeteorMode.RollSpeed,
+				_config.MeteorMode.RollDuration,
+				16f,
+				_config.MeteorMode.RollDamage,
+				_config.Puddle,
+				_config.Gas
+			);
+
+			// --- œ–ﬂÃ¿ﬂ »Õ⁄≈ ÷»ﬂ »Õ“≈–¬¿À¿ ÿÀ≈…‘¿ ---
+			var spawnerScript = rollingGo.Components.Get<ObjectTrailSpawner>();
+			if ( spawnerScript != null )
+			{
+				spawnerScript.SpawnInterval = _config.MeteorMode.TrailSpawnInterval;
+			}
+		}
+
+		bool anyZoneDamageEnabled = _config.Explosion.Enabled || _config.Puddle.Enabled || _config.Gas.Enabled;
+
+		if ( _config.ZonePrefab != null && anyZoneDamageEnabled )
+		{
+			var zoneGo = _config.ZonePrefab.Clone( tr.EndPosition, Rotation.Identity );
+			var baseZone = zoneGo.Components.GetOrCreate<ExplosionBase>();
+			baseZone.SetupZone( _launcher );
+
+			if ( _config.Explosion.Enabled )
+			{
+				var exp = zoneGo.Components.GetOrCreate<AoEExplosionDamage>();
+				exp.Damage = _config.Explosion.Damage;
+				exp.Radius = _config.Explosion.Radius;
+				exp.ExplosionDebugLifetime = _config.Explosion.DebugTime;
+			}
+
+			if ( _config.Puddle.Enabled )
+			{
+				var puddle = zoneGo.Components.GetOrCreate<FirePuddleDamage>();
+				puddle.DamagePerTick = _config.Puddle.DamagePerTick;
+				puddle.TickInterval = _config.Puddle.TickInterval;
+				puddle.Radius = _config.Puddle.Radius;
+				puddle.MaxHeight = _config.Puddle.PuddleHeight;
+				puddle.PuddleLifetime = _config.Puddle.Lifetime;
+			}
+
+			if ( _config.Gas.Enabled )
+			{
+				var gas = zoneGo.Components.GetOrCreate<GasCloudDamage>();
+				gas.DamagePerTick = _config.Gas.DamagePerTick;
+				gas.TickInterval = _config.Gas.TickInterval;
+				gas.Radius = _config.Gas.Radius;
+				gas.CloudLifetime = _config.Gas.Lifetime;
+			}
+		}
+
+		GameObject.Destroy();
+	}
+}
