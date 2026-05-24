@@ -1,9 +1,3 @@
-using MagicSystem;
-
-public interface IAreaRadiusProvider
+public interface IAreaRadiusProvider : IMagicTypeProvider, IAttackStateProvider, IRangeProvider
 {
-	ProjectileType MagicType { get; }
-	bool IsAttacking { get; }
-	float GetMaxAreaRadius();
-	float MaxRange { get; }
 }

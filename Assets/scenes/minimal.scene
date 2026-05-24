@@ -2552,7 +2552,9 @@
           "__guid": "acb24882-0694-4cd3-8c50-49e7ba0cdae0",
           "__enabled": true,
           "Flags": 0,
+          "AreaCircleName": "AreaCircle",
           "CircleModelRadius": 100,
+          "DirectPointName": "DirectPoint",
           "IndicatorPrefab": {
             "_type": "gameobject",
             "prefab": "prefabs/spellindicator.prefab"
@@ -4281,14 +4283,14 @@
       "CustomBounds": false
     },
     "GameObjectSystems": {
-      "Sandbox.Clutter.ClutterGridSystem": {
-        "Storage": {
-          "$blob": "a5be1baa-010e-4d5e-bbcd-5fa419ba0bd1"
-        }
-      },
       "Sandbox.SelectionSetsSystem": {
         "Data": {
           "SelectionSets": []
+        }
+      },
+      "Sandbox.Clutter.ClutterGridSystem": {
+        "Storage": {
+          "$blob": "a5be1baa-010e-4d5e-bbcd-5fa419ba0bd1"
         }
       }
     }

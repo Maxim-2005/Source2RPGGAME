@@ -1,8 +1,9 @@
+using System;
 using Sandbox;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-// Наследуемся от нашего абстрактного модуля атаки, а не от Component
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅ пїЅпїЅ Component
 public sealed class BoxDamageArea : BaseAttackModule
 {
 	[Property, Group( "Damage Settings" )] public float Damage { get; set; } = 25f;
@@ -13,15 +14,17 @@ public sealed class BoxDamageArea : BaseAttackModule
 	[Property, Group( "Setup" )] public GameObject AttackOrigin { get; set; }
 	[Property, Group( "Setup" )] public bool ShowDebug { get; set; } = true;
 
-	// Тайминги удара, которые раньше были в WeaponItem, теперь живут в самом модуле меча
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ WeaponItem, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 	[Property, Group( "Attack Timings" )] public float PreAttackDelay { get; set; } = 0.15f;
 	[Property, Group( "Attack Timings" )] public float AttackDuration { get; set; } = 0.2f;
 	[Property, Group( "Attack Timings" )] public float AttackCooldown { get; set; } = 0.6f;
 
-	[HideInEditor] public bool IsAttackActive { get; set; } = false;
+	[Hide] public bool IsAttackActive { get; set; } = false;
+
+	private GameObject AttackOriginPoint => AttackOrigin != null ? AttackOrigin : GameObject;
 
 	private readonly HashSet<GameObject> _hitTargetsThisAttack = new();
-	private TimeSince _timeSinceLastAttack = 999f; // Таймер кулдауна
+	private TimeSince _timeSinceLastAttack = 999f; // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
 	protected override void OnStart()
 	{
@@ -32,14 +35,14 @@ public sealed class BoxDamageArea : BaseAttackModule
 	{
 		if ( !ShowDebug ) return;
 
-		GameObject originPoint = AttackOrigin != null ? AttackOrigin : GameObject;
+		GameObject originPoint = AttackOriginPoint;
 		if ( originPoint == null ) return;
 
 		using ( Gizmo.Scope() )
 		{
 			Gizmo.Transform = new Transform( originPoint.WorldPosition, originPoint.WorldRotation );
 
-			// Дебаг: красный если бьем, полупрозрачный зеленый если просто держим
+			// пїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 			Gizmo.Draw.Color = IsAttackActive ? Color.Red : Color.Green.WithAlpha( 0.4f );
 
 			Vector3 capsuleStart = Vector3.Zero;
@@ -50,15 +53,15 @@ public sealed class BoxDamageArea : BaseAttackModule
 	}
 
 	/// <summary>
-	/// РЕАЛИЗАЦИЯ ИЗ BaseAttackModule: вызывается из WeaponItem, когда зажат ЛКМ
+	/// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ BaseAttackModule: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ WeaponItem, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
 	/// </summary>
 	public override bool TryAttack( GameObject attacker, SkinnedModelRenderer playerModel )
 	{
-		// Если уже машем мечом или не прошел кулдаун — игнорируем клик
+		// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 		if ( IsAttacking || _timeSinceLastAttack < AttackCooldown ) return false;
 		if ( attacker == null ) return false;
 
-		// Запускаем асинхронный процесс удара
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 		_ = ProcessSwing( attacker, playerModel );
 
 		return true;
@@ -66,44 +69,49 @@ public sealed class BoxDamageArea : BaseAttackModule
 
 	private async Task ProcessSwing( GameObject attacker, SkinnedModelRenderer playerModel )
 	{
-		IsAttacking = true;
-		_timeSinceLastAttack = 0; // Сбрасываем кулдаун
-
-		if ( playerModel != null )
+		try
 		{
-			playerModel.Set( "b_attack", true );
-		}
+			IsAttacking = true;
+			_timeSinceLastAttack = 0;
 
-		// 1. Фаза замаха (PreAttackDelay)
-		await Task.DelaySeconds( PreAttackDelay );
+			if ( playerModel != null )
+			{
+				playerModel.Set( "b_attack", true );
+			}
 
-		// Защита на случай, если во время замаха оружие выбросили или удалили
-		if ( !IsValid || !GameObject.IsValid() || GameObject.Parent == null )
-		{
+			await Task.DelaySeconds( PreAttackDelay );
+
+			if ( !IsValid || !GameObject.IsValid() || GameObject.Parent == null )
+			{
+				IsAttacking = false;
+				return;
+			}
+
+			ResetTargets();
+			IsAttackActive = true;
+
+			TimeSince timeSinceAttackStart = 0;
+			while ( timeSinceAttackStart < AttackDuration )
+			{
+				if ( !IsValid || !GameObject.IsValid() || GameObject.Parent == null ) break;
+
+				ExecuteDamageTick( attacker );
+				await Task.Frame();
+			}
+
+			IsAttackActive = false;
 			IsAttacking = false;
-			return;
 		}
-
-		// 2. Активная фаза удара (наносим урон)
-		ResetTargets();
-		IsAttackActive = true;
-
-		TimeSince timeSinceAttackStart = 0;
-		while ( timeSinceAttackStart < AttackDuration )
+		catch ( Exception e )
 		{
-			if ( !IsValid || !GameObject.IsValid() || GameObject.Parent == null ) break;
-
-			ExecuteDamageTick( attacker );
-			await Task.Frame();
+			Log.Error( e );
+			IsAttacking = false;
 		}
-
-		// 3. Конец атаки
-		IsAttackActive = false;
-		IsAttacking = false;
 	}
 
+
 	/// <summary>
-	/// Принудительная остановка атаки (например, если выбросили оружие)
+	/// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ)
 	/// </summary>
 	public override void StopAttack()
 	{
@@ -120,13 +128,13 @@ public sealed class BoxDamageArea : BaseAttackModule
 
 	public void ExecuteDamageTick( GameObject attacker )
 	{
-		GameObject originPoint = AttackOrigin != null ? AttackOrigin : GameObject;
+		GameObject originPoint = AttackOriginPoint;
 		if ( originPoint == null ) return;
 
 		Vector3 startSweep = originPoint.WorldPosition;
 		Vector3 endSweep = startSweep + (originPoint.WorldRotation.Forward * CapsuleLength);
 
-		// ФИКС CS0103: Используем точный контекст сцены для трейсинга сферы
+		// пїЅпїЅпїЅпїЅ CS0103: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 		var allHits = Scene.PhysicsWorld.Trace
 			.Sphere( CapsuleRadius, startSweep, endSweep )
 			.RunAll();
@@ -139,12 +147,11 @@ public sealed class BoxDamageArea : BaseAttackModule
 			if ( target == null ) continue;
 
 			if ( target == attacker || target == GameObject || target.Name.Contains( "Player" ) ) continue;
-			if ( !target.Tags.Has( "enemy" ) ) continue;
+			if ( !target.Tags.Has( GameTags.Enemy ) ) continue;
 
 			if ( !_hitTargetsThisAttack.Contains( target ) )
 			{
-				var health = target.Components.Get<HealthComponent>( FindMode.EverythingInSelfAndAncestors )
-							 ?? target.Components.Get<HealthComponent>( FindMode.EverythingInDescendants );
+				var health = target.GetHealth();
 
 				if ( health != null )
 				{

@@ -17,7 +17,7 @@ public sealed class MagicProjectile : Component
 
 	private HashSet<Guid> _hitTargetsThisSpawn = new HashSet<Guid>();
 
-	public void LaunchAsDirect( GameObject launcher, Vector3 direction, AttackProjectile config, float scale, float? overrideSpeed = null, float? flightDistance = null )
+	public void LaunchAsDirect( GameObject launcher, Vector3 direction, AttackProjectile config, float? flightDistance = null )
 	{
 		_launcher = launcher;
 		_config = config;
@@ -26,16 +26,9 @@ public sealed class MagicProjectile : Component
 		_startPosition = GameObject.WorldPosition;
 
 		_maxFlightDistance = flightDistance;
+		_currentSpeed = config.MagicType == ProjectileType.Direct ? config.DirectMode.Speed : config.MeteorMode.FallSpeed;
 
-		if ( overrideSpeed.HasValue )
-		{
-			_currentSpeed = overrideSpeed.Value;
-		}
-		else if ( config.MagicType == ProjectileType.Direct )
-		{
-			_currentSpeed = config.DirectMode.Speed;
-		}
-
+		float scale = config.MagicType == ProjectileType.Direct ? config.DirectMode.ProjectileScale : config.MeteorMode.Scale;
 		var visuals = GameObject.Components.Get<ProjectileVisuals>( FindMode.EverythingInSelfAndChildren );
 		visuals?.SetupVisuals( config.MagicType, scale );
 
@@ -92,25 +85,25 @@ public sealed class MagicProjectile : Component
 			float radius = 16f * _config.MeteorMode.Scale;
 			var tr = Scene.PhysicsWorld.Trace
 				.Sphere( radius, GameObject.WorldPosition, nextPosition )
-				.WithoutTags( "projectile", "trigger" )
+				.WithoutTags( GameTags.Projectile, "trigger" )
 				.Run();
 
 			if ( tr.Hit && tr.Body?.GameObject != null )
 			{
 				var hitGo = tr.Body.GameObject;
 
-				if ( hitGo == _launcher || hitGo.Root == _launcher?.Root )
+				if ( hitGo.IsOwnedBy( _launcher ) )
 				{
 					tr.Hit = false;
 				}
-				else if ( hitGo.Tags.Has( "player" ) || hitGo.Tags.Has( "enemy" ) )
+				else if ( hitGo.Tags.Has( "player" ) || hitGo.Tags.Has( GameTags.Enemy ) )
 				{
-					if ( _config.MeteorMode.HasDirectHit && hitGo.Tags.Has( "enemy" ) )
+					if ( _config.MeteorMode.HasDirectHit && hitGo.Tags.Has( GameTags.Enemy ) )
 					{
 						if ( !_hitTargetsThisSpawn.Contains( hitGo.Id ) )
 						{
 							_hitTargetsThisSpawn.Add( hitGo.Id );
-							var health = hitGo.Components.Get<HealthComponent>( FindMode.EverythingInSelfAndAncestors );
+							var health = hitGo.GetHealth();
 							health?.TakeDamage( _config.MeteorMode.Damage, _launcher );
 						}
 					}
@@ -124,7 +117,7 @@ public sealed class MagicProjectile : Component
 		{
 			var tr = Scene.PhysicsWorld.Trace
 				.Ray( GameObject.WorldPosition, nextPosition )
-				.WithoutTags( "projectile", "trigger" )
+				.WithoutTags( GameTags.Projectile, "trigger" )
 				.Run();
 
 			if ( tr.Hit ) { Impact( tr ); return; }
@@ -143,7 +136,7 @@ public sealed class MagicProjectile : Component
 			Vector3 fallDirection = (targetFloorPos - skySpawnPos).Normal;
 			var meteorGo = _config.ProjectilePrefab.Clone( skySpawnPos, Rotation.LookAt( fallDirection ) );
 			var meteorScript = meteorGo.Components.Get<MagicProjectile>();
-			meteorScript?.LaunchAsDirect( _launcher, fallDirection, _config, _config.MeteorMode.Scale, _config.MeteorMode.FallSpeed );
+			meteorScript?.LaunchAsDirect( _launcher, fallDirection, _config );
 			GameObject.Destroy();
 		}
 		else
@@ -167,7 +160,16 @@ public sealed class MagicProjectile : Component
 	{
 		GameObject hitTarget = tr.Body?.GameObject;
 
-		if ( hitTarget != null && (hitTarget == _launcher || hitTarget.Root == _launcher?.Root) ) return;
+		if ( hitTarget.IsOwnedBy( _launcher ) ) return;
+
+		if ( _config.MagicType == ProjectileType.Direct && _config.DirectMode.HasDirectHit )
+		{
+			if ( hitTarget != null && hitTarget.Tags.Has( GameTags.Enemy ) )
+			{
+				var health = hitTarget.GetHealth();
+				health?.TakeDamage( _config.DirectMode.Damage, _launcher );
+			}
+		}
 
 		if ( _isTracerMode )
 		{
@@ -180,7 +182,7 @@ public sealed class MagicProjectile : Component
 			var meteorGo = _config.ProjectilePrefab.Clone( skySpawnPos, Rotation.LookAt( fallDirection ) );
 			var meteorScript = meteorGo.Components.Get<MagicProjectile>();
 
-			meteorScript?.LaunchAsDirect( _launcher, fallDirection, _config, _config.MeteorMode.Scale, _config.MeteorMode.FallSpeed );
+			meteorScript?.LaunchAsDirect( _launcher, fallDirection, _config );
 
 			GameObject.Destroy();
 			return;
@@ -200,16 +202,7 @@ public sealed class MagicProjectile : Component
 			rollingGo.WorldScale = _config.MeteorMode.Scale;
 
 			var rollingScript = rollingGo.Components.Get<MeteorRollingLogic>();
-			rollingScript?.InitializeRoll(
-				_launcher,
-				rollDir,
-				_config.MeteorMode.RollSpeed,
-				_config.MeteorMode.RollDuration,
-				16f,
-				_config.MeteorMode.RollDamage,
-				_config.Puddle,
-				_config.Gas
-			);
+			rollingScript?.InitializeRoll( _launcher, rollDir, _config, 16f );
 
 			// --- ������ �������� ��������� ������ ---
 			var spawnerScript = rollingGo.Components.Get<ObjectTrailSpawner>();
@@ -224,35 +217,7 @@ public sealed class MagicProjectile : Component
 		if ( _config.ZonePrefab != null && anyZoneDamageEnabled )
 		{
 			var zoneGo = _config.ZonePrefab.Clone( tr.EndPosition, Rotation.Identity );
-			var baseZone = zoneGo.Components.GetOrCreate<ExplosionBase>();
-			baseZone.SetupZone( _launcher );
-
-			if ( _config.Explosion.Enabled )
-			{
-				var exp = zoneGo.Components.GetOrCreate<AoEExplosionDamage>();
-				exp.Damage = _config.Explosion.Damage;
-				exp.Radius = _config.Explosion.Radius;
-				exp.ExplosionDebugLifetime = _config.Explosion.DebugTime;
-			}
-
-			if ( _config.Puddle.Enabled )
-			{
-				var puddle = zoneGo.Components.GetOrCreate<FirePuddleDamage>();
-				puddle.DamagePerTick = _config.Puddle.DamagePerTick;
-				puddle.TickInterval = _config.Puddle.TickInterval;
-				puddle.Radius = _config.Puddle.Radius;
-				puddle.MaxHeight = _config.Puddle.PuddleHeight;
-				puddle.PuddleLifetime = _config.Puddle.Lifetime;
-			}
-
-			if ( _config.Gas.Enabled )
-			{
-				var gas = zoneGo.Components.GetOrCreate<GasCloudDamage>();
-				gas.DamagePerTick = _config.Gas.DamagePerTick;
-				gas.TickInterval = _config.Gas.TickInterval;
-				gas.Radius = _config.Gas.Radius;
-				gas.CloudLifetime = _config.Gas.Lifetime;
-			}
+			ZoneFactory.ConfigureZoneEffects( zoneGo, _config, _launcher );
 		}
 
 		GameObject.Destroy();

@@ -6,18 +6,18 @@ public sealed class ObjectTrailSpawner : Component
 {
 	[Property] public PrefabScene TrailPrefab { get; set; }
 
-	// Этот интервал будет перезаписан из MagicProjectile при спавне
+	// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ MagicProjectile пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 	[Property, Group( "Settings" )] public float SpawnInterval { get; set; } = 0.18f;
 
 	private RealTimeSince _timeSinceLastSpawn;
 	private IGroundTraceable _traceableObject;
-	private MeteorRollingLogic _meteorLogic;
+	private ITrailEffectProvider _trailProvider;
 
 	protected override void OnStart()
 	{
 		_timeSinceLastSpawn = 0;
 		_traceableObject = GameObject.Components.Get<IGroundTraceable>();
-		_meteorLogic = GameObject.Components.Get<MeteorRollingLogic>();
+		_trailProvider = GameObject.Components.Get<ITrailEffectProvider>();
 	}
 
 	protected override void OnUpdate()
@@ -26,13 +26,11 @@ public sealed class ObjectTrailSpawner : Component
 		if ( _timeSinceLastSpawn < SpawnInterval ) return;
 		if ( _traceableObject != null && _traceableObject.IsInAir ) return;
 
-		// Защита: проверяем, включены ли лужа или газ в структурах
-		if ( _meteorLogic != null )
+		// пїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+		if ( _trailProvider != null )
 		{
-			PuddleSettings puddleConfig = _meteorLogic.GetPuddleConfig();
-			GasSettings gasConfig = _meteorLogic.GetGasConfig();
-
-			if ( !puddleConfig.Enabled && !gasConfig.Enabled ) return;
+			TrailSettings trailSettings = _trailProvider.GetTrailSettings();
+			if ( !trailSettings.HasAnyEnabled ) return;
 		}
 
 		SpawnTrailObject();
@@ -46,7 +44,7 @@ public sealed class ObjectTrailSpawner : Component
 		var downTrace = Scene.PhysicsWorld.Trace
 			.Ray( spawnPosition, spawnPosition + Vector3.Down * 200f )
 			.WithAnyTags( "world", "solid", "map", "static" )
-			.WithoutTags( "player", "projectile", "trigger" )
+			.WithoutTags( "player", GameTags.Projectile, "trigger" )
 			.Run();
 
 		Vector3 finalSpawnPos = downTrace.Hit ? downTrace.EndPosition : spawnPosition;
@@ -54,42 +52,10 @@ public sealed class ObjectTrailSpawner : Component
 		var zoneGo = TrailPrefab.Clone( finalSpawnPos, Rotation.Identity );
 		if ( zoneGo == null ) return;
 
-		GameObject activeLauncher = _meteorLogic?.GetLauncher();
-		var baseZone = zoneGo.Components.GetOrCreate<ExplosionBase>();
+		if ( _trailProvider == null ) return;
 
-		if ( baseZone != null && activeLauncher != null )
-		{
-			baseZone.SetupZone( activeLauncher );
-		}
-
-		if ( _meteorLogic != null )
-		{
-			PuddleSettings puddleConfig = _meteorLogic.GetPuddleConfig();
-			if ( puddleConfig.Enabled )
-			{
-				var puddle = zoneGo.Components.GetOrCreate<FirePuddleDamage>();
-				if ( puddle != null )
-				{
-					puddle.DamagePerTick = puddleConfig.DamagePerTick;
-					puddle.TickInterval = puddleConfig.TickInterval;
-					puddle.Radius = puddleConfig.Radius;
-					puddle.MaxHeight = puddleConfig.PuddleHeight;
-					puddle.PuddleLifetime = puddleConfig.Lifetime;
-				}
-			}
-
-			GasSettings gasConfig = _meteorLogic.GetGasConfig();
-			if ( gasConfig.Enabled )
-			{
-				var gas = zoneGo.Components.GetOrCreate<GasCloudDamage>();
-				if ( gas != null )
-				{
-					gas.DamagePerTick = gasConfig.DamagePerTick;
-					gas.TickInterval = gasConfig.TickInterval;
-					gas.Radius = gasConfig.Radius;
-					gas.CloudLifetime = gasConfig.Lifetime;
-				}
-			}
-		}
+		TrailSettings trailSettings = _trailProvider.GetTrailSettings();
+		GameObject activeLauncher = _trailProvider.GetLauncher();
+		ZoneFactory.ConfigureZoneEffects( zoneGo, trailSettings, activeLauncher );
 	}
 }

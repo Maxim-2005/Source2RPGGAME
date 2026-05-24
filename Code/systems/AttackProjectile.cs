@@ -21,6 +21,10 @@ public sealed class AttackProjectile : BaseAttackModule, IAreaRadiusProvider
 	[Property, Group( "Configurations" )] public PuddleSettings Puddle { get; set; } = new();
 	[Property, Group( "Configurations" )] public GasSettings Gas { get; set; } = new();
 
+	private const float CameraTraceDistance = 10000f;
+	private const float GroundTraceDistance = 5000f;
+	private const float SpawnOffset = 40f;
+
 	public float GetMaxAreaRadius()
 	{
 		float maxRadius = 0f;
@@ -49,97 +53,105 @@ public sealed class AttackProjectile : BaseAttackModule, IAreaRadiusProvider
 
 	private async Task ProcessShoot( GameObject attacker, SkinnedModelRenderer playerModel )
 	{
-		IsAttacking = true;
-		_timeSinceLastAttack = 0;
-
-		if ( playerModel != null ) playerModel.Set( "b_attack", true );
-		await Task.DelaySeconds( PreAttackDelay );
-
-		if ( !IsValid || !GameObject.IsValid() || GameObject.Parent == null )
+		try
 		{
-			IsAttacking = false;
-			return;
-		}
+			IsAttacking = true;
+			_timeSinceLastAttack = 0;
 
-		GameObject origin = LaunchPoint != null ? LaunchPoint : GameObject;
-		Vector3 shootDirection;
-		float flightDistance = MaxRange;
+			if ( playerModel != null ) playerModel.Set( "b_attack", true );
+			await Task.DelaySeconds( PreAttackDelay );
 
-		if ( attacker != null )
-		{
-			var camera = attacker.Components.Get<CameraComponent>( FindMode.EverythingInSelfAndDescendants );
-			if ( camera != null )
+			if ( !IsValid || !GameObject.IsValid() || GameObject.Parent == null )
 			{
-				Vector3 traceStart = camera.WorldPosition;
-				Vector3 traceEnd = camera.WorldPosition + camera.WorldRotation.Forward * 10000f;
+				IsAttacking = false;
+				return;
+			}
 
-				var cameraTrace = Scene.PhysicsWorld.Trace
-					.Ray( traceStart, traceEnd )
-					.WithoutTags( "player", "projectile", "trigger" )
-					.Run();
+			GameObject origin = LaunchPoint != null ? LaunchPoint : GameObject;
+			Vector3 shootDirection;
+			float flightDistance = MaxRange;
 
-				Vector3 rawTarget = cameraTrace.Hit
-					? cameraTrace.EndPosition
-					: traceEnd;
-
-				Vector3 toOrigin = rawTarget - origin.WorldPosition;
-				float originDist = toOrigin.Length;
-				Vector3 finalTarget = originDist <= MaxRange
-					? rawTarget
-					: origin.WorldPosition + toOrigin.Normal * MaxRange;
-
-				if ( !cameraTrace.Hit )
+			if ( attacker != null )
+			{
+				var camera = attacker.Components.Get<CameraComponent>( FindMode.EverythingInSelfAndDescendants );
+				if ( camera != null )
 				{
-					var groundTrace = Scene.PhysicsWorld.Trace
-						.Ray( finalTarget, finalTarget + Vector3.Down * 5000f )
-						.WithoutTags( "player", "projectile", "trigger" )
+					Vector3 traceStart = camera.WorldPosition;
+					Vector3 traceEnd = camera.WorldPosition + camera.WorldRotation.Forward * CameraTraceDistance;
+
+					var cameraTrace = Scene.PhysicsWorld.Trace
+						.Ray( traceStart, traceEnd )
+						.WithoutTags( "player", GameTags.Projectile, "trigger" )
 						.Run();
 
-					if ( groundTrace.Hit )
-						finalTarget = groundTrace.EndPosition;
-				}
+					Vector3 rawTarget = cameraTrace.Hit
+						? cameraTrace.EndPosition
+						: traceEnd;
 
-				Vector3 toTarget = finalTarget - origin.WorldPosition;
-				if ( toTarget.Length < 0.1f || Vector3.Dot( toTarget.Normal, camera.WorldRotation.Forward ) <= 0f )
-				{
-					shootDirection = camera.WorldRotation.Forward;
+					Vector3 toOrigin = rawTarget - origin.WorldPosition;
+					float originDist = toOrigin.Length;
+					Vector3 finalTarget = originDist <= MaxRange
+						? rawTarget
+						: origin.WorldPosition + toOrigin.Normal * MaxRange;
+
+					if ( !cameraTrace.Hit )
+					{
+						var groundTrace = Scene.PhysicsWorld.Trace
+							.Ray( finalTarget, finalTarget + Vector3.Down * GroundTraceDistance )
+							.WithoutTags( "player", GameTags.Projectile, "trigger" )
+							.Run();
+
+						if ( groundTrace.Hit )
+							finalTarget = groundTrace.EndPosition;
+					}
+
+					Vector3 toTarget = finalTarget - origin.WorldPosition;
+					if ( toTarget.Length < 0.1f || Vector3.Dot( toTarget.Normal, camera.WorldRotation.Forward ) <= 0f )
+					{
+						shootDirection = camera.WorldRotation.Forward;
+					}
+					else
+					{
+						shootDirection = toTarget.Normal;
+						flightDistance = toTarget.Length;
+					}
 				}
 				else
 				{
-					shootDirection = toTarget.Normal;
-					flightDistance = toTarget.Length;
+					shootDirection = origin.WorldRotation.Forward;
 				}
 			}
 			else
 			{
 				shootDirection = origin.WorldRotation.Forward;
 			}
-		}
-		else
-		{
-			shootDirection = origin.WorldRotation.Forward;
-		}
 
-		shootDirection = shootDirection.Normal;
+			shootDirection = shootDirection.Normal;
 
-		if ( ProjectilePrefab != null )
-		{
-			if ( MagicType == ProjectileType.Direct )
+			if ( ProjectilePrefab != null )
 			{
-				Vector3 finalSpawnPos = origin.WorldPosition + (shootDirection * 40f);
-				var projectileGo = ProjectilePrefab.Clone( finalSpawnPos, Rotation.LookAt( shootDirection ) );
-				var projectileScript = projectileGo.Components.Get<MagicProjectile>();
+				if ( MagicType == ProjectileType.Direct )
+				{
+					Vector3 finalSpawnPos = origin.WorldPosition + (shootDirection * SpawnOffset);
+					var projectileGo = ProjectilePrefab.Clone( finalSpawnPos, Rotation.LookAt( shootDirection ) );
+					var projectileScript = projectileGo.Components.Get<MagicProjectile>();
 
-				projectileScript?.LaunchAsDirect( attacker, shootDirection, this, DirectMode.ProjectileScale, flightDistance: flightDistance );
+					projectileScript?.LaunchAsDirect( attacker, shootDirection, this, flightDistance );
+				}
+				else if ( MagicType == ProjectileType.Meteor )
+				{
+					var projectileGo = ProjectilePrefab.Clone( origin.WorldPosition, Rotation.LookAt( shootDirection ) );
+					var projectileScript = projectileGo.Components.Get<MagicProjectile>();
+					projectileScript?.LaunchAsMeteorTracer( attacker, shootDirection, this, flightDistance );
+				}
 			}
-			else if ( MagicType == ProjectileType.Meteor )
-			{
-				var projectileGo = ProjectilePrefab.Clone( origin.WorldPosition, Rotation.LookAt( shootDirection ) );
-				var projectileScript = projectileGo.Components.Get<MagicProjectile>();
-				projectileScript?.LaunchAsMeteorTracer( attacker, shootDirection, this, flightDistance );
-			}
+
+			IsAttacking = false;
 		}
-
-		IsAttacking = false;
+		catch ( Exception e )
+		{
+			Log.Error( e );
+			IsAttacking = false;
+		}
 	}
 }

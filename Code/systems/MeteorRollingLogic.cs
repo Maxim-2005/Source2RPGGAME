@@ -4,7 +4,7 @@ using System.Linq;
 using Sandbox;
 using MagicSystem;
 
-public sealed class MeteorRollingLogic : Component, IGroundTraceable
+public sealed class MeteorRollingLogic : Component, IGroundTraceable, ITrailEffectProvider
 {
 	private Vector3 _rollDirection;
 	private float _speed;
@@ -28,20 +28,19 @@ public sealed class MeteorRollingLogic : Component, IGroundTraceable
 
 	public bool IsInAir => _fallVelocity > 0.1f;
 
-	public PuddleSettings GetPuddleConfig() => _puddleConfig;
-	public GasSettings GetGasConfig() => _gasConfig;
+	public TrailSettings GetTrailSettings() => new() { Puddle = _puddleConfig, Gas = _gasConfig };
 	public GameObject GetLauncher() => _launcher;
 
-	public void InitializeRoll( GameObject launcher, Vector3 direction, float speed, float lifetime, float radius, float rollDamage, PuddleSettings puddleConfig, GasSettings gasConfig )
+	public void InitializeRoll( GameObject launcher, Vector3 direction, AttackProjectile config, float radius )
 	{
 		_launcher = launcher;
 		_rollDirection = direction.WithZ( 0 ).Normal;
-		_speed = speed;
-		_lifetime = lifetime;
+		_speed = config.MeteorMode.RollSpeed;
+		_lifetime = config.MeteorMode.RollDuration;
 		_radius = radius;
-		_rollDamage = rollDamage;
-		_puddleConfig = puddleConfig;
-		_gasConfig = gasConfig;
+		_rollDamage = config.MeteorMode.RollDamage;
+		_puddleConfig = config.Puddle;
+		_gasConfig = config.Gas;
 
 		_visualsFolder = GameObject.Children.FirstOrDefault( c => c.Name == "Visuals" ) ?? GameObject;
 
@@ -76,7 +75,7 @@ public sealed class MeteorRollingLogic : Component, IGroundTraceable
 		var terrainTrace = Scene.PhysicsWorld.Trace
 			.Ray( rayStart, rayEnd )
 			.WithAnyTags( "world", "solid", "map", "static" )
-			.WithoutTags( "player", "projectile", "trigger", "enemy" )
+			.WithoutTags( "player", GameTags.Projectile, "trigger", GameTags.Enemy )
 			.Run();
 
 		if ( terrainTrace.Hit )
@@ -118,8 +117,8 @@ public sealed class MeteorRollingLogic : Component, IGroundTraceable
 		float damageRadius = scaledRadius * 1.2f;
 		var overlapTraces = Scene.PhysicsWorld.Trace
 			.Sphere( damageRadius, GameObject.WorldPosition, GameObject.WorldPosition )
-			.WithTag( "enemy" )
-			.WithoutTags( "projectile", "trigger", "player" )
+			.WithTag( GameTags.Enemy )
+			.WithoutTags( GameTags.Projectile, "trigger", "player" )
 			.RunAll();
 
 		if ( overlapTraces != null )
@@ -131,7 +130,7 @@ public sealed class MeteorRollingLogic : Component, IGroundTraceable
 
 				if ( !_hitTargets.Contains( enemyGo.Id ) )
 				{
-					var health = enemyGo.Components.Get<HealthComponent>( FindMode.EverythingInSelfAndAncestors );
+					var health = enemyGo.GetHealth();
 					if ( health != null )
 					{
 						health.TakeDamage( _rollDamage, _launcher );

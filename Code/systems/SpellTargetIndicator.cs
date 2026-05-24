@@ -7,13 +7,14 @@ public sealed class SpellTargetIndicator : Component
 {
 	[Property, Group( "Indicator Setup" )] public GameObject IndicatorPrefab { get; set; }
 	[Property, Group( "Indicator Setup" )] public float CircleModelRadius { get; set; } = 100f;
+	[Property, Group( "Indicator Setup" )] public string DirectPointName { get; set; } = "DirectPoint";
+	[Property, Group( "Indicator Setup" )] public string AreaCircleName { get; set; } = "AreaCircle";
 
 	private GameObject _indicatorInstance;
 	private IAreaRadiusProvider _radiusProvider;
 	private WeaponItem _weaponItem;
 	private CameraComponent _camera;
-	// ������� ������ ��� �������������� ������ � ������� ����������� ��� ������ �����
-	private int _initialFramesDelay = 0;
+	private bool _isInitialized = false;
 
 	protected override void OnStart()
 	{
@@ -32,30 +33,28 @@ public sealed class SpellTargetIndicator : Component
 			}
 		}
 
-		// ���������� ������ 5 ������ ����, ���� ����� ��������������� � ����� ������
-		if ( _initialFramesDelay < 5 )
-		{
-			_initialFramesDelay++;
-			HideIndicator();
-			return;
-		}
-
-		if ( _weaponItem == null )
+		if ( !_isInitialized )
 		{
 			_weaponItem = Components.Get<WeaponItem>();
+			_radiusProvider = Components.Get<IAreaRadiusProvider>()
+			                  ?? Components.GetInDescendants<IAreaRadiusProvider>()
+			                  ?? Components.GetInAncestors<IAreaRadiusProvider>();
+			if ( _weaponItem != null && _radiusProvider != null )
+				_isInitialized = true;
+			else
+			{
+				HideIndicator();
+				return;
+			}
 		}
 
-		if ( _weaponItem == null || !_weaponItem.IsHeld )
+		if ( !_weaponItem.IsHeld )
 		{
 			HideIndicator();
 			return;
 		}
 
-		_radiusProvider = Components.Get<IAreaRadiusProvider>();
-		if ( _radiusProvider == null ) _radiusProvider = Components.GetInDescendants<IAreaRadiusProvider>();
-		if ( _radiusProvider == null ) _radiusProvider = Components.GetInAncestors<IAreaRadiusProvider>();
-
-		if ( _radiusProvider == null || _radiusProvider.IsAttacking )
+		if ( _radiusProvider.IsAttacking )
 		{
 			HideIndicator();
 			return;
@@ -69,7 +68,7 @@ public sealed class SpellTargetIndicator : Component
 		var trace = Scene.PhysicsWorld.Trace
 			.Ray( traceStart, traceEnd )
 			.WithoutTag( "player" )
-			.WithoutTag( "projectile" )
+			.WithoutTag( GameTags.Projectile )
 			.WithoutTag( "trigger" )
 			.Run();
 
@@ -87,7 +86,7 @@ public sealed class SpellTargetIndicator : Component
 			var groundTrace = Scene.PhysicsWorld.Trace
 				.Ray( finalTarget, finalTarget + Vector3.Down * 5000f )
 				.WithoutTag( "player" )
-				.WithoutTag( "projectile" )
+				.WithoutTag( GameTags.Projectile )
 				.WithoutTag( "trigger" )
 				.Run();
 
@@ -118,8 +117,8 @@ public sealed class SpellTargetIndicator : Component
 		_indicatorInstance.WorldPosition = trace.EndPosition;
 		_indicatorInstance.WorldRotation = Rotation.FromToRotation( Vector3.Up, trace.Normal );
 
-		var directVisual = _indicatorInstance.Children.Find( c => c.Name == "DirectPoint" );
-		var areaVisual = _indicatorInstance.Children.Find( c => c.Name == "AreaCircle" );
+		var directVisual = _indicatorInstance.Children.Find( c => c.Name == DirectPointName );
+		var areaVisual = _indicatorInstance.Children.Find( c => c.Name == AreaCircleName );
 
 		if ( _radiusProvider.MagicType == ProjectileType.Direct )
 		{
