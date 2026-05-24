@@ -15,6 +15,7 @@ public sealed class AttackProjectile : BaseAttackModule, IAreaRadiusProvider
 	public float MaxRange => Spell?.MaxRange ?? 2500f;
 	public DirectSettings DirectMode => Spell?.DirectMode ?? new();
 	public MeteorSettings MeteorMode => Spell?.MeteorMode ?? new();
+	public ChainLightningSettings ChainLightningMode => Spell?.ChainLightningMode ?? new();
 	public ExplosionSettings Explosion => Spell?.Explosion ?? new();
 	public PuddleSettings Puddle => Spell?.Puddle ?? new();
 	public GasSettings Gas => Spell?.Gas ?? new();

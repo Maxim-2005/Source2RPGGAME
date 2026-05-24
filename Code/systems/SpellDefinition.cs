@@ -18,6 +18,7 @@ public class SpellDefinition : GameResource
 	public float MaxRange { get; set; } = 2500f;
 	public DirectSettings DirectMode { get; set; } = new();
 	public MeteorSettings MeteorMode { get; set; } = new();
+	public ChainLightningSettings ChainLightningMode { get; set; } = new();
 
 	[Category( "Impact Effects" )]
 	public GameObject ZonePrefab { get; set; }
@@ -34,6 +35,7 @@ public class SpellDefinition : GameResource
 		{
 			ProjectileType.Direct => new DirectBehavior(),
 			ProjectileType.Meteor => new MeteorTracerBehavior(),
+			ProjectileType.ChainLightning => new ChainLightningBehavior(),
 			_ => throw new NotSupportedException( $"Unknown projectile type: {MagicType}" )
 		};
 	}

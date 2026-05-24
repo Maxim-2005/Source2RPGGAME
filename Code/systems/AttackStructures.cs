@@ -6,7 +6,8 @@ namespace MagicSystem
 	public enum ProjectileType
 	{
 		Direct,
-		Meteor
+		Meteor,
+		ChainLightning
 	}
 
 	[System.Serializable]
@@ -67,6 +68,16 @@ namespace MagicSystem
 		[Property] public float TickInterval { get; set; } = 0.4f;
 		[Property] public float Radius { get; set; } = 140f;
 		[Property] public float Lifetime { get; set; } = 6f;
+	}
+
+	[System.Serializable]
+	public record struct ChainLightningSettings
+	{
+		public ChainLightningSettings() { }
+		[Property] public float Damage { get; set; } = 30f;
+		[Property] public float ChainRadius { get; set; } = 300f;
+		[Property] public int MaxTargets { get; set; } = 4;
+		[Property, Title( "Damage Falloff" )] public float DamageFalloff { get; set; } = 0.5f;
 	}
 
 	[System.Serializable]

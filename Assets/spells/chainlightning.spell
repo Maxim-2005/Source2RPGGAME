@@ -1,0 +1,62 @@
+{
+  "SpellName": "Chain Lightning",
+  "ManaCost": 15,
+  "AttackCooldown": 1.5,
+  "PreAttackDelay": 0.15,
+  "MagicType": "ChainLightning",
+  "ProjectilePrefab": {
+    "_type": "gameobject",
+    "prefab": "prefabs/sphere.prefab"
+  },
+  "MaxRange": 2000,
+  "DirectMode": {
+    "Damage": 30,
+    "Speed": 1500,
+    "ProjectileScale": 0.3,
+    "HasDirectHit": true
+  },
+  "MeteorMode": {
+    "Damage": 60,
+    "SpawnHeight": 900,
+    "FallSpeed": 3000,
+    "Scale": 2.5,
+    "HasDirectHit": true,
+    "RollAfterImpact": false,
+    "RollingPrefab": null,
+    "RollSpeed": 450,
+    "RollDuration": 3.5,
+    "RollDamage": 15,
+    "TrailSpawnInterval": 0.18
+  },
+  "ZonePrefab": null,
+  "Explosion": {
+    "Enabled": false,
+    "Damage": 0,
+    "Radius": 0,
+    "DebugTime": 0
+  },
+  "Puddle": {
+    "Enabled": false,
+    "DamagePerTick": 0,
+    "TickInterval": 0.5,
+    "Radius": 100,
+    "PuddleHeight": 30,
+    "Lifetime": 5
+  },
+  "Gas": {
+    "Enabled": false,
+    "DamagePerTick": 0,
+    "TickInterval": 0.4,
+    "Radius": 140,
+    "Lifetime": 6
+  },
+  "ChainLightningMode": {
+    "Damage": 30,
+    "ChainRadius": 300,
+    "MaxTargets": 4,
+    "DamageFalloff": 0.5
+  },
+  "StatusEffects": [],
+  "__references": [],
+  "__version": 0
+}
