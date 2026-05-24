@@ -6,7 +6,6 @@ public sealed class ObjectTrailSpawner : Component
 {
 	[Property] public PrefabScene TrailPrefab { get; set; }
 
-	// ���� �������� ����� ����������� �� MagicProjectile ��� ������
 	[Property, Group( "Settings" )] public float SpawnInterval { get; set; } = 0.18f;
 
 	[Hide] private RealTimeSince _timeSinceLastSpawn;
@@ -26,7 +25,6 @@ public sealed class ObjectTrailSpawner : Component
 		if ( _timeSinceLastSpawn < SpawnInterval ) return;
 		if ( _traceableObject != null && _traceableObject.IsInAir ) return;
 
-		// ������: ���������, �������� �� ���� ��� ��� � ����������
 		if ( _trailProvider != null )
 		{
 			TrailSettings trailSettings = _trailProvider.GetTrailSettings();

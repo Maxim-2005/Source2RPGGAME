@@ -6,17 +6,19 @@ public sealed class StatusEffectManager : Component
 {
     private readonly List<ActiveEffect> _activeEffects = new();
     private readonly List<ActiveEffect> _pendingRemoval = new();
+    private bool _modifierRegistered;
 
     public IReadOnlyList<ActiveEffect> ActiveEffects => _activeEffects;
 
     protected override void OnStart()
     {
-        DamageService.DamageModifiers.Add( ModifyDamage );
+        EnsureModifierRegistered();
     }
 
     protected override void OnDestroy()
     {
-        DamageService.DamageModifiers.Remove( ModifyDamage );
+        if ( _modifierRegistered )
+            DamageService.DamageModifiers.Remove( ModifyDamage );
         ClearAll();
     }
 
@@ -48,8 +50,16 @@ public sealed class StatusEffectManager : Component
             _activeEffects.Remove( effect );
     }
 
+    private void EnsureModifierRegistered()
+    {
+        if ( _modifierRegistered ) return;
+        DamageService.DamageModifiers.Add( ModifyDamage );
+        _modifierRegistered = true;
+    }
+
     public void Apply( string id, float duration, float magnitude, float tickInterval, GameObject source )
     {
+        EnsureModifierRegistered();
         var existing = _activeEffects.Find( e => e.Id == id );
         if ( existing != null )
         {

@@ -39,7 +39,7 @@
     "DebugTime": 1
   },
   "Puddle": {
-    "Enabled": false,
+    "Enabled": true,
     "DamagePerTick": 8,
     "TickInterval": 0.5,
     "Radius": 100,
@@ -47,7 +47,7 @@
     "Lifetime": 5
   },
   "Gas": {
-    "Enabled": false,
+    "Enabled": true,
     "DamagePerTick": 12,
     "TickInterval": 0.4,
     "Radius": 140,

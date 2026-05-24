@@ -41,14 +41,12 @@ public sealed class AoEExplosionDamage : Component
 
 	protected override void OnUpdate()
 	{
-		// ���� ����� ����������� ������ ����� � ���������� ������ ���� ���������
 		if ( _timeSinceExplosion >= ExplosionDebugLifetime )
 		{
-			Destroy(); // ������� ��������� AoEExplosionDamage, ���� �� GameObject �������� ����!
+			Destroy();
 			return;
 		}
 
-		// ���������� ��������� 3D ����� ������
 		if ( ShowDebug )
 		{
 			using ( Gizmo.Scope() )

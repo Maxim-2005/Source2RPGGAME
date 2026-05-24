@@ -32,8 +32,9 @@ public class SpellDefinition : GameResource
 	{
 		return MagicType switch
 		{
+			ProjectileType.Direct => new DirectBehavior(),
 			ProjectileType.Meteor => new MeteorTracerBehavior(),
-			_ => new DirectBehavior()
+			_ => throw new NotSupportedException( $"Unknown projectile type: {MagicType}" )
 		};
 	}
 

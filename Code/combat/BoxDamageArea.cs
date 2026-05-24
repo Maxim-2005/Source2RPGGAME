@@ -94,10 +94,7 @@ public sealed class BoxDamageArea : BaseAttackModule
 	/// </summary>
 	public override void StopAttack()
 	{
-		if ( !IsAttacking )
-		{
-			IsAttackActive = false;
-		}
+		IsAttackActive = false;
 	}
 
 	public void ResetTargets()

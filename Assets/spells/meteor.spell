@@ -21,7 +21,7 @@
     "FallSpeed": 3000,
     "Scale": 2.5,
     "HasDirectHit": true,
-    "RollAfterImpact": false,
+    "RollAfterImpact": true,
     "RollingPrefab": {
       "_type": "gameobject",
       "prefab": "prefabs/meteor_rolling.prefab"
@@ -36,13 +36,13 @@
     "prefab": "prefabs/firezone.prefab"
   },
   "Explosion": {
-    "Enabled": true,
+    "Enabled": false,
     "Damage": 40,
     "Radius": 180,
     "DebugTime": 1
   },
   "Puddle": {
-    "Enabled": false,
+    "Enabled": true,
     "DamagePerTick": 8,
     "TickInterval": 0.5,
     "Radius": 100,
@@ -50,12 +50,13 @@
     "Lifetime": 5
   },
   "Gas": {
-    "Enabled": false,
+    "Enabled": true,
     "DamagePerTick": 12,
     "TickInterval": 0.4,
     "Radius": 140,
     "Lifetime": 6
   },
+  "StatusEffects": [],
   "__references": [],
   "__version": 0
 }
