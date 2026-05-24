@@ -1,259 +1,93 @@
 using Sandbox;
-using MagicSystem;
-using System.Collections.Generic;
 using System;
 
 public sealed class MagicProjectile : Component
 {
-	private const float MeteorRadiusBase = 16f;
-	private const float TracerSpeed = 150000f;
-	private const float SpawnHeightOffsetFactor = 0.4f;
+    [Hide] private IProjectileBehavior _behavior = null!;
+    [Hide] private Vector3 _direction;
+    [Hide] private GameObject _launcher;
+    [Hide] private AttackProjectile _config;
+    [Hide] private bool _launched;
+    [Hide] private float _currentSpeed = 2500f;
+    [Hide] private Vector3 _startPosition;
+    [Hide] private float? _maxFlightDistance;
 
-	[Hide] private Vector3 _direction;
-	[Hide] private GameObject _launcher;
-	[Hide] private AttackProjectile _config;
-	[Hide] private bool _launched = false;
+    public Vector3 Direction => _direction;
+    public GameObject Launcher => _launcher;
+    public AttackProjectile Config => _config;
 
-	[Hide] private bool _isTracerMode = false;
-	[Hide] private float _currentSpeed = 2500f;
-	[Hide] private Vector3 _startPosition;
-	[Hide] private float? _maxFlightDistance;
+    public void Launch( IProjectileBehavior behavior, GameObject launcher, Vector3 direction, AttackProjectile config, float? flightDistance )
+    {
+        _behavior = behavior;
+        behavior.Launch( this, launcher, direction, config, flightDistance );
+    }
 
-	[Hide] private HashSet<Guid> _hitTargetsThisSpawn = new HashSet<Guid>();
+    public void InternalLaunch( GameObject launcher, Vector3 direction, AttackProjectile config, float speed, float? flightDistance )
+    {
+        _direction = direction.Normal;
+        _launcher = launcher;
+        _config = config;
+        _currentSpeed = speed;
+        _startPosition = GameObject.WorldPosition;
+        _maxFlightDistance = flightDistance;
+        _launched = true;
+    }
 
-	public void LaunchAsDirect( GameObject launcher, Vector3 direction, AttackProjectile config, float? flightDistance = null )
-	{
-		_launcher = launcher;
-		_config = config;
-		_isTracerMode = false;
-		_direction = direction.Normal;
-		_startPosition = GameObject.WorldPosition;
+    protected override void OnUpdate()
+    {
+        if ( !_launched || _config == null ) return;
 
-		_maxFlightDistance = flightDistance;
-		_currentSpeed = config.MagicType == ProjectileType.Direct ? config.DirectMode.Speed : config.MeteorMode.FallSpeed;
+        float travelDistance = Vector3.DistanceBetween( _startPosition, GameObject.WorldPosition );
 
-		float scale = config.MagicType == ProjectileType.Direct ? config.DirectMode.ProjectileScale : config.MeteorMode.Scale;
-		var visuals = GameObject.Components.Get<ProjectileVisuals>( FindMode.EverythingInSelfAndChildren );
-		visuals?.SetupVisuals( config.MagicType, scale );
+        if ( _maxFlightDistance.HasValue && travelDistance >= _maxFlightDistance.Value )
+        {
+            _behavior.HandleMaxDistance( this );
+            return;
+        }
 
-		_launched = true;
-	}
+        Vector3 currentPos = GameObject.WorldPosition;
+        float step = _currentSpeed * Time.Delta;
 
-	public void LaunchAsMeteorTracer( GameObject launcher, Vector3 direction, AttackProjectile config, float flightDistance )
-	{
-		_launcher = launcher;
-		_direction = direction.Normal;
-		_config = config;
-		_isTracerMode = true;
-		_currentSpeed = TracerSpeed;
-		_startPosition = GameObject.WorldPosition;
-		_maxFlightDistance = flightDistance;
-		_launched = true;
+        if ( _maxFlightDistance.HasValue )
+        {
+            float remaining = _maxFlightDistance.Value - travelDistance;
+            if ( step > remaining )
+                step = Math.Max( remaining, 0f );
+        }
 
-		var visuals = GameObject.Components.Get<ProjectileVisuals>( FindMode.EverythingInSelfAndChildren );
-		visuals?.HideAll();
-	}
+        if ( step <= 0f )
+        {
+            _behavior.HandleMaxDistance( this );
+            return;
+        }
 
-	protected override void OnUpdate()
-	{
-		if ( !_launched || _config == null ) return;
+        Vector3 nextPosition = currentPos + _direction * step;
 
-		float travelDistance = Vector3.DistanceBetween( _startPosition, GameObject.WorldPosition );
+        if ( _behavior.TryHandleCollision( this, nextPosition, out var hitResult ) )
+        {
+            _behavior.OnImpact( this, hitResult );
+            return;
+        }
 
-		if ( _maxFlightDistance.HasValue && travelDistance >= _maxFlightDistance.Value )
-		{
-			HandleMaxDistanceReached();
-			return;
-		}
+        GameObject.WorldPosition = nextPosition;
+    }
 
-		Vector3 currentPos = GameObject.WorldPosition;
-		float step = _currentSpeed * Time.Delta;
+    public void TriggerAirExplosion()
+    {
+        _behavior.OnImpact( this, new PhysicsTraceResult
+        {
+            Hit = true,
+            EndPosition = GameObject.WorldPosition,
+            Normal = -_direction
+        } );
+    }
 
-		if ( _maxFlightDistance.HasValue )
-		{
-			float remaining = _maxFlightDistance.Value - travelDistance;
-			if ( step > remaining )
-				step = Math.Max( remaining, 0f );
-		}
+    public void SpawnZoneEffects( Vector3 position )
+    {
+        if ( _config.ZonePrefab == null ) return;
+        if ( !_config.Explosion.Enabled && !_config.Puddle.Enabled && !_config.Gas.Enabled ) return;
 
-		if ( step <= 0f )
-		{
-			HandleMaxDistanceReached();
-			return;
-		}
-
-		Vector3 nextPosition = currentPos + _direction * step;
-
-		if ( TryHandleCollision( nextPosition, out var hitResult ) )
-		{
-			Impact( hitResult );
-			return;
-		}
-
-		GameObject.WorldPosition = nextPosition;
-	}
-
-	private bool TryHandleCollision( Vector3 nextPosition, out PhysicsTraceResult hitResult )
-	{
-		if ( !_isTracerMode && _config.MagicType == ProjectileType.Meteor )
-			return TryHandleMeteorCollision( nextPosition, out hitResult );
-
-		return TryHandleDirectCollision( nextPosition, out hitResult );
-	}
-
-	private bool TryHandleMeteorCollision( Vector3 nextPosition, out PhysicsTraceResult hitResult )
-	{
-		float radius = MeteorRadiusBase * _config.MeteorMode.Scale;
-		var tr = Scene.PhysicsWorld.Trace
-			.Sphere( radius, GameObject.WorldPosition, nextPosition )
-			.WithoutTags( GameTags.Projectile, GameTags.Trigger )
-			.Run();
-
-		if ( tr.Hit && tr.Body?.GameObject != null )
-		{
-			var hitGo = tr.Body.GameObject;
-
-			if ( hitGo.IsOwnedBy( _launcher ) )
-			{
-				tr.Hit = false;
-			}
-			else if ( hitGo.Tags.Has( GameTags.Player ) || hitGo.Tags.Has( GameTags.Enemy ) )
-			{
-				if ( _config.MeteorMode.HasDirectHit && hitGo.Tags.Has( GameTags.Enemy ) )
-				{
-					if ( !_hitTargetsThisSpawn.Contains( hitGo.Id ) )
-					{
-						_hitTargetsThisSpawn.Add( hitGo.Id );
-						DamageService.ApplyDamage( hitGo, _config.MeteorMode.Damage, _launcher );
-					}
-				}
-				tr.Hit = false;
-			}
-		}
-
-		hitResult = tr;
-		return tr.Hit;
-	}
-
-	private bool TryHandleDirectCollision( Vector3 nextPosition, out PhysicsTraceResult hitResult )
-	{
-		var tr = Scene.PhysicsWorld.Trace
-			.Ray( GameObject.WorldPosition, nextPosition )
-			.WithoutTags( GameTags.Projectile, GameTags.Trigger )
-			.Run();
-
-		hitResult = tr;
-		return tr.Hit;
-	}
-
-	private void HandleMaxDistanceReached()
-	{
-		if ( _isTracerMode )
-		{
-			Vector3 targetFloorPos = GameObject.WorldPosition;
-			Vector3 skySpawnPos = targetFloorPos + ( Vector3.Up * _config.MeteorMode.SpawnHeight );
-			skySpawnPos -= _direction * ( _config.MeteorMode.SpawnHeight * SpawnHeightOffsetFactor );
-			Vector3 fallDirection = (targetFloorPos - skySpawnPos).Normal;
-			var meteorGo = _config.ProjectilePrefab.Clone( skySpawnPos, Rotation.LookAt( fallDirection ) );
-			var meteorScript = meteorGo.Components.Get<MagicProjectile>();
-			meteorScript?.LaunchAsDirect( _launcher, fallDirection, _config );
-			GameObject.Destroy();
-		}
-		else
-		{
-			TriggerAirExplosion();
-		}
-	}
-
-	private void TriggerAirExplosion()
-	{
-		PhysicsTraceResult airExplosionTrace = new PhysicsTraceResult
-		{
-			Hit = true,
-			EndPosition = GameObject.WorldPosition,
-			Normal = -_direction
-		};
-		Impact( airExplosionTrace );
-	}
-
-	private void Impact( PhysicsTraceResult tr )
-	{
-		GameObject hitTarget = tr.Body?.GameObject;
-		if ( hitTarget.IsOwnedBy( _launcher ) ) return;
-
-		HandleDirectHitDamage( hitTarget );
-
-		if ( _isTracerMode )
-		{
-			SpawnMeteorFromTracer( tr.EndPosition );
-			GameObject.Destroy();
-			return;
-		}
-
-		if ( ShouldSpawnRollingBoulder() )
-			SpawnRollingBoulder( tr.EndPosition );
-
-		SpawnZoneEffects( tr.EndPosition );
-		GameObject.Destroy();
-	}
-
-	private void HandleDirectHitDamage( GameObject hitTarget )
-	{
-		if ( _config.MagicType != ProjectileType.Direct || !_config.DirectMode.HasDirectHit ) return;
-		if ( hitTarget == null || !hitTarget.Tags.Has( GameTags.Enemy ) ) return;
-
-		DamageService.ApplyDamage( hitTarget, _config.DirectMode.Damage, _launcher );
-	}
-
-	private void SpawnMeteorFromTracer( Vector3 impactPosition )
-	{
-		using ( Gizmo.Scope() ) { }
-
-		Vector3 skySpawnPos = impactPosition + ( Vector3.Up * _config.MeteorMode.SpawnHeight );
-		skySpawnPos -= _direction * ( _config.MeteorMode.SpawnHeight * SpawnHeightOffsetFactor );
-
-		Vector3 fallDirection = ( impactPosition - skySpawnPos ).Normal;
-		var meteorGo = _config.ProjectilePrefab.Clone( skySpawnPos, Rotation.LookAt( fallDirection ) );
-		var meteorScript = meteorGo.Components.Get<MagicProjectile>();
-		meteorScript?.LaunchAsDirect( _launcher, fallDirection, _config );
-	}
-
-	private bool ShouldSpawnRollingBoulder()
-	{
-		return _config.MagicType == ProjectileType.Meteor
-			&& _config.MeteorMode.RollAfterImpact
-			&& _config.MeteorMode.RollingPrefab != null;
-	}
-
-	private void SpawnRollingBoulder( Vector3 impactPosition )
-	{
-		var currentVisuals = GameObject.Components.Get<ProjectileVisuals>( FindMode.EverythingInSelfAndChildren );
-		currentVisuals?.HideAll();
-
-		var rootRenderer = GameObject.Components.Get<ModelRenderer>();
-		if ( rootRenderer != null ) rootRenderer.Enabled = false;
-
-		Vector3 rollDir = new Vector3( _direction.x, _direction.y, 0 ).Normal;
-
-		var rollingGo = _config.MeteorMode.RollingPrefab.Clone( impactPosition, Rotation.Identity );
-		rollingGo.WorldScale = _config.MeteorMode.Scale;
-
-		var rollingScript = rollingGo.Components.Get<MeteorRollingLogic>();
-		rollingScript?.InitializeRoll( _launcher, rollDir, _config, MeteorRadiusBase );
-
-		var spawnerScript = rollingGo.Components.Get<ObjectTrailSpawner>();
-		if ( spawnerScript != null )
-		{
-			spawnerScript.SpawnInterval = _config.MeteorMode.TrailSpawnInterval;
-		}
-	}
-
-	private void SpawnZoneEffects( Vector3 position )
-	{
-		if ( _config.ZonePrefab == null ) return;
-		if ( !_config.Explosion.Enabled && !_config.Puddle.Enabled && !_config.Gas.Enabled ) return;
-
-		var zoneGo = _config.ZonePrefab.Clone( position, Rotation.Identity );
-		ZoneFactory.ConfigureZoneEffects( zoneGo, _config, _launcher );
-	}
+        var zoneGo = _config.ZonePrefab.Clone( position, Rotation.Identity );
+        ZoneFactory.ConfigureZoneEffects( zoneGo, _config, _launcher );
+    }
 }

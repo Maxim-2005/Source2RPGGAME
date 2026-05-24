@@ -1,3 +1,4 @@
-public interface IAreaRadiusProvider : IMagicTypeProvider, IAttackStateProvider, IRangeProvider
+public interface IAreaRadiusProvider : IAttackStateProvider, IRangeProvider
 {
+    IProjectileBehavior Behavior { get; }
 }

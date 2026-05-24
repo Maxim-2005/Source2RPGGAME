@@ -25,6 +25,15 @@ public class SpellDefinition : GameResource
 	public PuddleSettings Puddle { get; set; } = new();
 	public GasSettings Gas { get; set; } = new();
 
+	public IProjectileBehavior CreateBehavior()
+	{
+		return MagicType switch
+		{
+			ProjectileType.Meteor => new MeteorTracerBehavior(),
+			_ => new DirectBehavior()
+		};
+	}
+
 	public float GetMaxAreaRadius()
 	{
 		float maxRadius = 0f;

@@ -1,5 +1,4 @@
 using Sandbox;
-using MagicSystem;
 using System;
 using System.Linq;
 
@@ -60,6 +59,12 @@ public sealed class SpellTargetIndicator : Component
 			return;
 		}
 
+		if ( !_radiusProvider.Behavior.IsAreaTarget )
+		{
+			HideIndicator();
+			return;
+		}
+
 		float maxRange = _radiusProvider.MaxRange;
 		var aim = AimHelper.Calculate( Scene, GameObject.WorldPosition, _camera.WorldPosition, _camera.WorldRotation, maxRange );
 
@@ -89,22 +94,14 @@ public sealed class SpellTargetIndicator : Component
 		var directVisual = _indicatorInstance.Children.Find( c => c.Name == DirectPointName );
 		var areaVisual = _indicatorInstance.Children.Find( c => c.Name == AreaCircleName );
 
-		if ( _radiusProvider.MagicType == ProjectileType.Direct )
-		{
-			if ( directVisual != null ) directVisual.Enabled = true;
-			if ( areaVisual != null ) areaVisual.Enabled = false;
-		}
-		else if ( _radiusProvider.MagicType == ProjectileType.Meteor )
-		{
-			if ( directVisual != null ) directVisual.Enabled = false;
-			if ( areaVisual != null ) areaVisual.Enabled = true;
+		if ( directVisual != null ) directVisual.Enabled = false;
+		if ( areaVisual != null ) areaVisual.Enabled = true;
 
-			if ( areaVisual != null )
-			{
-				float maxRadius = _radiusProvider.GetMaxAreaRadius();
-				float targetScale = maxRadius / CircleModelRadius;
-				areaVisual.LocalScale = new Vector3( targetScale, targetScale, targetScale );
-			}
+		if ( areaVisual != null )
+		{
+			float maxRadius = _radiusProvider.GetMaxAreaRadius();
+			float targetScale = maxRadius / CircleModelRadius;
+			areaVisual.LocalScale = new Vector3( targetScale, targetScale, targetScale );
 		}
 	}
 
