@@ -1,0 +1,58 @@
+{
+  "SpellName": "Fireball",
+  "ManaCost": 10,
+  "AttackCooldown": 0.8,
+  "PreAttackDelay": 0.15,
+  "MagicType": "Direct",
+  "ProjectilePrefab": {
+    "_type": "gameobject",
+    "prefab": "prefabs/sphere.prefab"
+  },
+  "MaxRange": 2500,
+  "DirectMode": {
+    "Damage": 25,
+    "Speed": 1200,
+    "ProjectileScale": 0.19999988,
+    "HasDirectHit": true
+  },
+  "MeteorMode": {
+    "Damage": 60,
+    "SpawnHeight": 900,
+    "FallSpeed": 3000,
+    "Scale": 2.5,
+    "HasDirectHit": false,
+    "RollAfterImpact": false,
+    "RollingPrefab": null,
+    "RollSpeed": 450,
+    "RollDuration": 3.5,
+    "RollDamage": 15,
+    "TrailSpawnInterval": 0.18
+  },
+  "ZonePrefab": {
+    "_type": "gameobject",
+    "prefab": "prefabs/firezone.prefab"
+  },
+  "Explosion": {
+    "Enabled": true,
+    "Damage": 40,
+    "Radius": 180,
+    "DebugTime": 2
+  },
+  "Puddle": {
+    "Enabled": true,
+    "DamagePerTick": 8,
+    "TickInterval": 0.5,
+    "Radius": 100,
+    "PuddleHeight": 30,
+    "Lifetime": 5
+  },
+  "Gas": {
+    "Enabled": true,
+    "DamagePerTick": 12,
+    "TickInterval": 0.4,
+    "Radius": 140,
+    "Lifetime": 6
+  },
+  "__references": [],
+  "__version": 0
+}

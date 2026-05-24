@@ -32,16 +32,10 @@ public sealed class AoEExplosionDamage : Component
 		{
 			GameObject target = hit.Body?.GameObject;
 			if ( target == null || hitObjects.Contains( target ) ) continue;
-			if ( target.IsOwnedBy( launcher ) ) continue;
-			if ( !target.Tags.Has( GameTags.Enemy ) ) continue;
+			if ( !DamageService.IsValidTarget( target, launcher ) ) continue;
 
 			hitObjects.Add( target );
-
-			var health = target.GetHealth();
-			if ( health != null )
-			{
-				health.TakeDamage( Damage, launcher );
-			}
+			DamageService.ApplyDamage( target, Damage, launcher );
 		}
 	}
 

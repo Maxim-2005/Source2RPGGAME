@@ -60,45 +60,14 @@ public sealed class SpellTargetIndicator : Component
 			return;
 		}
 
-		// ����������� �� ������ �� ��������� (��� �������� 3rd person — ������ ����� ����� ��� MaxRange)
-		Vector3 traceStart = _camera.WorldPosition;
-		Vector3 traceDirection = _camera.WorldRotation.Forward;
-		Vector3 traceEnd = traceStart + traceDirection * 10000f;
-
-		var trace = Scene.PhysicsWorld.Trace
-			.Ray( traceStart, traceEnd )
-			.WithoutTag( "player" )
-			.WithoutTag( GameTags.Projectile )
-			.WithoutTag( "trigger" )
-			.Run();
-
 		float maxRange = _radiusProvider.MaxRange;
-		Vector3 rawTarget = trace.Hit ? trace.EndPosition : traceEnd;
-		Vector3 toWeapon = rawTarget - GameObject.WorldPosition;
-		float weaponDist = toWeapon.Length;
-
-		Vector3 finalTarget = weaponDist <= maxRange
-			? rawTarget
-			: GameObject.WorldPosition + toWeapon.Normal * maxRange;
-
-		if ( !trace.Hit )
-		{
-			var groundTrace = Scene.PhysicsWorld.Trace
-				.Ray( finalTarget, finalTarget + Vector3.Down * 5000f )
-				.WithoutTag( "player" )
-				.WithoutTag( GameTags.Projectile )
-				.WithoutTag( "trigger" )
-				.Run();
-
-			if ( groundTrace.Hit )
-				finalTarget = groundTrace.EndPosition;
-		}
+		var aim = AimHelper.Calculate( Scene, GameObject.WorldPosition, _camera.WorldPosition, _camera.WorldRotation, maxRange );
 
 		PhysicsTraceResult indicatorTrace = new PhysicsTraceResult
 		{
 			Hit = true,
-			EndPosition = finalTarget,
-			Normal = trace.Hit ? trace.Normal : Vector3.Up
+			EndPosition = aim.TargetPoint,
+			Normal = aim.HitNormal
 		};
 		UpdateIndicator( indicatorTrace );
 	}

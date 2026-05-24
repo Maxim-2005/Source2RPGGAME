@@ -5,39 +5,24 @@ using MagicSystem;
 
 public sealed class AttackProjectile : BaseAttackModule, IAreaRadiusProvider
 {
-	[Property, Group( "Spawn" )] public GameObject ProjectilePrefab { get; set; }
+	[Property, Group( "Setup" )] public SpellDefinition Spell { get; set; }
 	[Property, Group( "Spawn" )] public GameObject LaunchPoint { get; set; }
-	[Property, Group( "Spawn" )] public GameObject ZonePrefab { get; set; }
 
-	[Property, Group( "Timings" )] public float PreAttackDelay { get; set; } = 0.15f;
-	[Property, Group( "Timings" )] public float AttackCooldown { get; set; } = 0.8f;
+	public GameObject ProjectilePrefab => Spell?.ProjectilePrefab;
+	public GameObject ZonePrefab => Spell?.ZonePrefab;
+	public float PreAttackDelay => Spell?.PreAttackDelay ?? 0.15f;
+	public float AttackCooldown => Spell?.AttackCooldown ?? 0.8f;
+	public ProjectileType MagicType => Spell?.MagicType ?? ProjectileType.Direct;
+	public float MaxRange => Spell?.MaxRange ?? 2500f;
+	public DirectSettings DirectMode => Spell?.DirectMode ?? new();
+	public MeteorSettings MeteorMode => Spell?.MeteorMode ?? new();
+	public ExplosionSettings Explosion => Spell?.Explosion ?? new();
+	public PuddleSettings Puddle => Spell?.Puddle ?? new();
+	public GasSettings Gas => Spell?.Gas ?? new();
 
-	[Property, Group( "Core Logic" )] public ProjectileType MagicType { get; set; } = ProjectileType.Direct;
-	[Property, Group( "Core Logic" )] public float MaxRange { get; set; } = 2500f;
-
-	[Property, Group( "Configurations" )] public DirectSettings DirectMode { get; set; } = new();
-	[Property, Group( "Configurations" )] public MeteorSettings MeteorMode { get; set; } = new();
-	[Property, Group( "Configurations" )] public ExplosionSettings Explosion { get; set; } = new();
-	[Property, Group( "Configurations" )] public PuddleSettings Puddle { get; set; } = new();
-	[Property, Group( "Configurations" )] public GasSettings Gas { get; set; } = new();
-
-	private const float CameraTraceDistance = 10000f;
-	private const float GroundTraceDistance = 5000f;
 	private const float SpawnOffset = 40f;
 
-	public float GetMaxAreaRadius()
-	{
-		float maxRadius = 0f;
-
-		if ( Explosion.Enabled )
-			maxRadius = Math.Max( maxRadius, Explosion.Radius );
-		if ( Puddle.Enabled )
-			maxRadius = Math.Max( maxRadius, Puddle.Radius );
-		if ( Gas.Enabled )
-			maxRadius = Math.Max( maxRadius, Gas.Radius );
-
-		return maxRadius > 0f ? maxRadius : 150f;
-	}
+	public float GetMaxAreaRadius() => Spell?.GetMaxAreaRadius() ?? 150f;
 
 	private TimeSince _timeSinceLastAttack = 100f;
 
@@ -76,44 +61,14 @@ public sealed class AttackProjectile : BaseAttackModule, IAreaRadiusProvider
 				var camera = attacker.Components.Get<CameraComponent>( FindMode.EverythingInSelfAndDescendants );
 				if ( camera != null )
 				{
-					Vector3 traceStart = camera.WorldPosition;
-					Vector3 traceEnd = camera.WorldPosition + camera.WorldRotation.Forward * CameraTraceDistance;
+					var aim = AimHelper.Calculate( Scene, origin.WorldPosition, camera.WorldPosition, camera.WorldRotation, MaxRange );
 
-					var cameraTrace = Scene.PhysicsWorld.Trace
-						.Ray( traceStart, traceEnd )
-						.WithoutTags( "player", GameTags.Projectile, "trigger" )
-						.Run();
-
-					Vector3 rawTarget = cameraTrace.Hit
-						? cameraTrace.EndPosition
-						: traceEnd;
-
-					Vector3 toOrigin = rawTarget - origin.WorldPosition;
-					float originDist = toOrigin.Length;
-					Vector3 finalTarget = originDist <= MaxRange
-						? rawTarget
-						: origin.WorldPosition + toOrigin.Normal * MaxRange;
-
-					if ( !cameraTrace.Hit )
-					{
-						var groundTrace = Scene.PhysicsWorld.Trace
-							.Ray( finalTarget, finalTarget + Vector3.Down * GroundTraceDistance )
-							.WithoutTags( "player", GameTags.Projectile, "trigger" )
-							.Run();
-
-						if ( groundTrace.Hit )
-							finalTarget = groundTrace.EndPosition;
-					}
-
-					Vector3 toTarget = finalTarget - origin.WorldPosition;
-					if ( toTarget.Length < 0.1f || Vector3.Dot( toTarget.Normal, camera.WorldRotation.Forward ) <= 0f )
-					{
+					if ( aim.Distance < 0.1f || Vector3.Dot( aim.Direction, camera.WorldRotation.Forward ) <= 0f )
 						shootDirection = camera.WorldRotation.Forward;
-					}
 					else
 					{
-						shootDirection = toTarget.Normal;
-						flightDistance = toTarget.Length;
+						shootDirection = aim.Direction;
+						flightDistance = aim.Distance;
 					}
 				}
 				else

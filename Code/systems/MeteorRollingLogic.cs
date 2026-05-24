@@ -130,18 +130,14 @@ public sealed class MeteorRollingLogic : Component, IGroundTraceable, ITrailEffe
 
 				if ( !_hitTargets.Contains( enemyGo.Id ) )
 				{
-					var health = enemyGo.GetHealth();
-					if ( health != null )
-					{
-						health.TakeDamage( _rollDamage, _launcher );
-						_hitTargets.Add( enemyGo.Id );
+					DamageService.ApplyDamage( enemyGo, _rollDamage, _launcher );
+					_hitTargets.Add( enemyGo.Id );
 
-						var rb = enemyGo.Components.Get<Rigidbody>();
-						if ( rb != null )
-						{
-							Vector3 pushDir = (enemyGo.WorldPosition - GameObject.WorldPosition).WithZ( 0.5f ).Normal;
-							rb.Velocity += pushDir * PushForce;
-						}
+					var rb = enemyGo.Components.Get<Rigidbody>();
+					if ( rb != null )
+					{
+						Vector3 pushDir = (enemyGo.WorldPosition - GameObject.WorldPosition).WithZ( 0.5f ).Normal;
+						rb.Velocity += pushDir * PushForce;
 					}
 				}
 			}

@@ -2420,47 +2420,9 @@
           "__guid": "270a39d7-7a7d-4fb0-a4c6-2dbc2c1ac84e",
           "__enabled": true,
           "Flags": 0,
-          "AttackCooldown": 0.3,
-          "DirectMode": {
-            "Damage": 40,
-            "Speed": 1000,
-            "ProjectileScale": 1,
-            "HasDirectHit": true
-          },
-          "Explosion": {
-            "Enabled": false,
-            "Damage": 50,
-            "Radius": 150,
-            "DebugTime": 0.3
-          },
-          "Gas": {
-            "Enabled": false,
-            "DamagePerTick": 8,
-            "TickInterval": 0.4,
-            "Radius": 150,
-            "Lifetime": 6
-          },
           "LaunchPoint": {
             "_type": "gameobject",
             "go": "4f483a84-6f94-4ef9-92d6-5b2ae2aa5c95"
-          },
-          "MagicType": "Meteor",
-          "MaxRange": 2500,
-          "MeteorMode": {
-            "Damage": 0,
-            "SpawnHeight": 1200,
-            "FallSpeed": 1800,
-            "Scale": 1,
-            "HasDirectHit": false,
-            "RollAfterImpact": true,
-            "RollingPrefab": {
-              "_type": "gameobject",
-              "prefab": "prefabs/meteor_rolling.prefab"
-            },
-            "RollSpeed": 100,
-            "RollDuration": 5,
-            "RollDamage": 0,
-            "TrailSpawnInterval": 0
           },
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
@@ -2468,23 +2430,7 @@
           "OnComponentFixedUpdate": null,
           "OnComponentStart": null,
           "OnComponentUpdate": null,
-          "PreAttackDelay": 0.15,
-          "ProjectilePrefab": {
-            "_type": "gameobject",
-            "prefab": "prefabs/sphere.prefab"
-          },
-          "Puddle": {
-            "Enabled": false,
-            "DamagePerTick": 10,
-            "TickInterval": 0.5,
-            "Radius": 150,
-            "PuddleHeight": 50,
-            "Lifetime": 5
-          },
-          "ZonePrefab": {
-            "_type": "gameobject",
-            "prefab": "prefabs/firezone.prefab"
-          }
+          "Spell": null
         },
         {
           "__type": "Sandbox.Rigidbody",

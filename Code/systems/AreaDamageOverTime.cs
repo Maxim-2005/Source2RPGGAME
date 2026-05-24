@@ -109,9 +109,7 @@ namespace MagicSystem
 			if ( ShowDebug )
 				Log.Info( $"[{DebugPrefix}] Урон по: {target.Name} от {launcher?.Name}" );
 
-			var health = target.GetHealth();
-			if ( health != null )
-				health.TakeDamage( DamagePerTick, launcher );
+			DamageService.ApplyDamage( target, DamagePerTick, launcher );
 		}
 	}
 }

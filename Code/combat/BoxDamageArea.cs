@@ -151,13 +151,8 @@ public sealed class BoxDamageArea : BaseAttackModule
 
 			if ( !_hitTargetsThisAttack.Contains( target ) )
 			{
-				var health = target.GetHealth();
-
-				if ( health != null )
-				{
-					_hitTargetsThisAttack.Add( target );
-					health.TakeDamage( Damage, attacker );
-				}
+				_hitTargetsThisAttack.Add( target );
+				DamageService.ApplyDamage( target, Damage, attacker );
 			}
 		}
 	}

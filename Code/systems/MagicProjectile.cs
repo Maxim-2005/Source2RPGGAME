@@ -103,8 +103,7 @@ public sealed class MagicProjectile : Component
 						if ( !_hitTargetsThisSpawn.Contains( hitGo.Id ) )
 						{
 							_hitTargetsThisSpawn.Add( hitGo.Id );
-							var health = hitGo.GetHealth();
-							health?.TakeDamage( _config.MeteorMode.Damage, _launcher );
+							DamageService.ApplyDamage( hitGo, _config.MeteorMode.Damage, _launcher );
 						}
 					}
 					tr.Hit = false;
@@ -182,8 +181,7 @@ public sealed class MagicProjectile : Component
 		if ( _config.MagicType != ProjectileType.Direct || !_config.DirectMode.HasDirectHit ) return;
 		if ( hitTarget == null || !hitTarget.Tags.Has( GameTags.Enemy ) ) return;
 
-		var health = hitTarget.GetHealth();
-		health?.TakeDamage( _config.DirectMode.Damage, _launcher );
+		DamageService.ApplyDamage( hitTarget, _config.DirectMode.Damage, _launcher );
 	}
 
 	private void SpawnMeteorFromTracer( Vector3 impactPosition )

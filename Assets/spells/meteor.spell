@@ -1,0 +1,61 @@
+{
+  "SpellName": "Meteor",
+  "ManaCost": 10,
+  "AttackCooldown": 2,
+  "PreAttackDelay": 0.5,
+  "MagicType": "Meteor",
+  "ProjectilePrefab": {
+    "_type": "gameobject",
+    "prefab": "prefabs/sphere.prefab"
+  },
+  "MaxRange": 2500,
+  "DirectMode": {
+    "Damage": 25,
+    "Speed": 1200,
+    "ProjectileScale": 1,
+    "HasDirectHit": false
+  },
+  "MeteorMode": {
+    "Damage": 60,
+    "SpawnHeight": 900,
+    "FallSpeed": 3000,
+    "Scale": 2.5,
+    "HasDirectHit": true,
+    "RollAfterImpact": false,
+    "RollingPrefab": {
+      "_type": "gameobject",
+      "prefab": "prefabs/meteor_rolling.prefab"
+    },
+    "RollSpeed": 450,
+    "RollDuration": 3.5,
+    "RollDamage": 15,
+    "TrailSpawnInterval": 0.18
+  },
+  "ZonePrefab": {
+    "_type": "gameobject",
+    "prefab": "prefabs/firezone.prefab"
+  },
+  "Explosion": {
+    "Enabled": true,
+    "Damage": 40,
+    "Radius": 180,
+    "DebugTime": 2
+  },
+  "Puddle": {
+    "Enabled": false,
+    "DamagePerTick": 8,
+    "TickInterval": 0.5,
+    "Radius": 100,
+    "PuddleHeight": 30,
+    "Lifetime": 5
+  },
+  "Gas": {
+    "Enabled": false,
+    "DamagePerTick": 12,
+    "TickInterval": 0.4,
+    "Radius": 140,
+    "Lifetime": 6
+  },
+  "__references": [],
+  "__version": 0
+}
