@@ -159,67 +159,82 @@ public sealed class MagicProjectile : Component
 	private void Impact( PhysicsTraceResult tr )
 	{
 		GameObject hitTarget = tr.Body?.GameObject;
-
 		if ( hitTarget.IsOwnedBy( _launcher ) ) return;
 
-		if ( _config.MagicType == ProjectileType.Direct && _config.DirectMode.HasDirectHit )
-		{
-			if ( hitTarget != null && hitTarget.Tags.Has( GameTags.Enemy ) )
-			{
-				var health = hitTarget.GetHealth();
-				health?.TakeDamage( _config.DirectMode.Damage, _launcher );
-			}
-		}
+		HandleDirectHitDamage( hitTarget );
 
 		if ( _isTracerMode )
 		{
-			using ( Gizmo.Scope() ) { }
-			Vector3 targetFloorPos = tr.EndPosition;
-			Vector3 skySpawnPos = targetFloorPos + (Vector3.Up * _config.MeteorMode.SpawnHeight);
-			skySpawnPos -= _direction * (_config.MeteorMode.SpawnHeight * 0.4f);
-
-			Vector3 fallDirection = (targetFloorPos - skySpawnPos).Normal;
-			var meteorGo = _config.ProjectilePrefab.Clone( skySpawnPos, Rotation.LookAt( fallDirection ) );
-			var meteorScript = meteorGo.Components.Get<MagicProjectile>();
-
-			meteorScript?.LaunchAsDirect( _launcher, fallDirection, _config );
-
+			SpawnMeteorFromTracer( tr.EndPosition );
 			GameObject.Destroy();
 			return;
 		}
 
-		if ( _config.MagicType == ProjectileType.Meteor && _config.MeteorMode.RollAfterImpact && _config.MeteorMode.RollingPrefab != null )
-		{
-			var currentVisuals = GameObject.Components.Get<ProjectileVisuals>( FindMode.EverythingInSelfAndChildren );
-			currentVisuals?.HideAll();
+		if ( ShouldSpawnRollingBoulder() )
+			SpawnRollingBoulder( tr.EndPosition );
 
-			var rootRenderer = GameObject.Components.Get<ModelRenderer>();
-			if ( rootRenderer != null ) rootRenderer.Enabled = false;
-
-			Vector3 rollDir = new Vector3( _direction.x, _direction.y, 0 ).Normal;
-
-			var rollingGo = _config.MeteorMode.RollingPrefab.Clone( tr.EndPosition, Rotation.Identity );
-			rollingGo.WorldScale = _config.MeteorMode.Scale;
-
-			var rollingScript = rollingGo.Components.Get<MeteorRollingLogic>();
-			rollingScript?.InitializeRoll( _launcher, rollDir, _config, 16f );
-
-			// --- ������ �������� ��������� ������ ---
-			var spawnerScript = rollingGo.Components.Get<ObjectTrailSpawner>();
-			if ( spawnerScript != null )
-			{
-				spawnerScript.SpawnInterval = _config.MeteorMode.TrailSpawnInterval;
-			}
-		}
-
-		bool anyZoneDamageEnabled = _config.Explosion.Enabled || _config.Puddle.Enabled || _config.Gas.Enabled;
-
-		if ( _config.ZonePrefab != null && anyZoneDamageEnabled )
-		{
-			var zoneGo = _config.ZonePrefab.Clone( tr.EndPosition, Rotation.Identity );
-			ZoneFactory.ConfigureZoneEffects( zoneGo, _config, _launcher );
-		}
-
+		SpawnZoneEffects( tr.EndPosition );
 		GameObject.Destroy();
+	}
+
+	private void HandleDirectHitDamage( GameObject hitTarget )
+	{
+		if ( _config.MagicType != ProjectileType.Direct || !_config.DirectMode.HasDirectHit ) return;
+		if ( hitTarget == null || !hitTarget.Tags.Has( GameTags.Enemy ) ) return;
+
+		var health = hitTarget.GetHealth();
+		health?.TakeDamage( _config.DirectMode.Damage, _launcher );
+	}
+
+	private void SpawnMeteorFromTracer( Vector3 impactPosition )
+	{
+		using ( Gizmo.Scope() ) { }
+
+		Vector3 skySpawnPos = impactPosition + ( Vector3.Up * _config.MeteorMode.SpawnHeight );
+		skySpawnPos -= _direction * ( _config.MeteorMode.SpawnHeight * 0.4f );
+
+		Vector3 fallDirection = ( impactPosition - skySpawnPos ).Normal;
+		var meteorGo = _config.ProjectilePrefab.Clone( skySpawnPos, Rotation.LookAt( fallDirection ) );
+		var meteorScript = meteorGo.Components.Get<MagicProjectile>();
+		meteorScript?.LaunchAsDirect( _launcher, fallDirection, _config );
+	}
+
+	private bool ShouldSpawnRollingBoulder()
+	{
+		return _config.MagicType == ProjectileType.Meteor
+			&& _config.MeteorMode.RollAfterImpact
+			&& _config.MeteorMode.RollingPrefab != null;
+	}
+
+	private void SpawnRollingBoulder( Vector3 impactPosition )
+	{
+		var currentVisuals = GameObject.Components.Get<ProjectileVisuals>( FindMode.EverythingInSelfAndChildren );
+		currentVisuals?.HideAll();
+
+		var rootRenderer = GameObject.Components.Get<ModelRenderer>();
+		if ( rootRenderer != null ) rootRenderer.Enabled = false;
+
+		Vector3 rollDir = new Vector3( _direction.x, _direction.y, 0 ).Normal;
+
+		var rollingGo = _config.MeteorMode.RollingPrefab.Clone( impactPosition, Rotation.Identity );
+		rollingGo.WorldScale = _config.MeteorMode.Scale;
+
+		var rollingScript = rollingGo.Components.Get<MeteorRollingLogic>();
+		rollingScript?.InitializeRoll( _launcher, rollDir, _config, 16f );
+
+		var spawnerScript = rollingGo.Components.Get<ObjectTrailSpawner>();
+		if ( spawnerScript != null )
+		{
+			spawnerScript.SpawnInterval = _config.MeteorMode.TrailSpawnInterval;
+		}
+	}
+
+	private void SpawnZoneEffects( Vector3 position )
+	{
+		if ( _config.ZonePrefab == null ) return;
+		if ( !_config.Explosion.Enabled && !_config.Puddle.Enabled && !_config.Gas.Enabled ) return;
+
+		var zoneGo = _config.ZonePrefab.Clone( position, Rotation.Identity );
+		ZoneFactory.ConfigureZoneEffects( zoneGo, _config, _launcher );
 	}
 }
