@@ -6,13 +6,12 @@ using System.Linq;
 public sealed class SpellTargetIndicator : Component
 {
 	[Property, Group( "Indicator Setup" )] public GameObject IndicatorPrefab { get; set; }
-	[Property, Group( "Indicator Setup" )] public float MaxTraceDistance { get; set; } = 2500f;
+	[Property, Group( "Indicator Setup" )] public float CircleModelRadius { get; set; } = 100f;
 
 	private GameObject _indicatorInstance;
-	private AttackProjectile _activeWeaponModule;
+	private IAreaRadiusProvider _radiusProvider;
+	private WeaponItem _weaponItem;
 	private CameraComponent _camera;
-	private GameObject _launchPoint;
-
 	// ������� ������ ��� �������������� ������ � ������� ����������� ��� ������ �����
 	private int _initialFramesDelay = 0;
 
@@ -23,6 +22,16 @@ public sealed class SpellTargetIndicator : Component
 
 	protected override void OnUpdate()
 	{
+		if ( _camera == null )
+		{
+			_camera = Scene.GetAllComponents<CameraComponent>().FirstOrDefault();
+			if ( _camera == null )
+			{
+				HideIndicator();
+				return;
+			}
+		}
+
 		// ���������� ������ 5 ������ ����, ���� ����� ��������������� � ����� ������
 		if ( _initialFramesDelay < 5 )
 		{
@@ -31,41 +40,32 @@ public sealed class SpellTargetIndicator : Component
 			return;
 		}
 
-		// ���� ������ ����� �� ������
-		_activeWeaponModule = Components.Get<AttackProjectile>();
-		if ( _activeWeaponModule == null ) _activeWeaponModule = Components.GetInDescendants<AttackProjectile>();
-		if ( _activeWeaponModule == null ) _activeWeaponModule = Components.GetInAncestors<AttackProjectile>();
+		if ( _weaponItem == null )
+		{
+			_weaponItem = Components.Get<WeaponItem>();
+		}
 
-		if ( _activeWeaponModule == null || _activeWeaponModule.IsAttacking )
+		if ( _weaponItem == null || !_weaponItem.IsHeld )
 		{
 			HideIndicator();
 			return;
 		}
 
-		// ���� �������� LaunchPoint
-		if ( _launchPoint == null )
+		_radiusProvider = Components.Get<IAreaRadiusProvider>();
+		if ( _radiusProvider == null ) _radiusProvider = Components.GetInDescendants<IAreaRadiusProvider>();
+		if ( _radiusProvider == null ) _radiusProvider = Components.GetInAncestors<IAreaRadiusProvider>();
+
+		if ( _radiusProvider == null || _radiusProvider.IsAttacking )
 		{
-			_launchPoint = GameObject.Children.Find( c => c.Name == "LaunchPoint" );
+			HideIndicator();
+			return;
 		}
 
-		// ����� ������ �� ��������� � ��� �����
-		Vector3 traceStart = GameObject.WorldPosition;
-		Vector3 traceDirection = GameObject.WorldRotation.Forward;
+		// ����������� �� ������ �� ��������� (��� �������� 3rd person — ������ ����� ����� ��� MaxRange)
+		Vector3 traceStart = _camera.WorldPosition;
+		Vector3 traceDirection = _camera.WorldRotation.Forward;
+		Vector3 traceEnd = traceStart + traceDirection * 10000f;
 
-		// ���� ����� LaunchPoint � ����� ��� ���������� � ���������� ��������� ������
-		if ( _launchPoint != null )
-		{
-			traceDirection = _launchPoint.WorldRotation.Forward;
-			traceStart = _launchPoint.WorldPosition + traceDirection * 15f;
-		}
-		else
-		{
-			traceStart = GameObject.WorldPosition + traceDirection * 15f;
-		}
-
-		Vector3 traceEnd = traceStart + traceDirection * MaxTraceDistance;
-
-		// ����� ��� ���� "world", ����� �������������� �������� ����� ����������� ��� ������
 		var trace = Scene.PhysicsWorld.Trace
 			.Ray( traceStart, traceEnd )
 			.WithoutTag( "player" )
@@ -73,14 +73,35 @@ public sealed class SpellTargetIndicator : Component
 			.WithoutTag( "trigger" )
 			.Run();
 
-		if ( trace.Hit )
+		float maxRange = _radiusProvider.MaxRange;
+		Vector3 rawTarget = trace.Hit ? trace.EndPosition : traceEnd;
+		Vector3 toWeapon = rawTarget - GameObject.WorldPosition;
+		float weaponDist = toWeapon.Length;
+
+		Vector3 finalTarget = weaponDist <= maxRange
+			? rawTarget
+			: GameObject.WorldPosition + toWeapon.Normal * maxRange;
+
+		if ( !trace.Hit )
 		{
-			UpdateIndicator( trace );
+			var groundTrace = Scene.PhysicsWorld.Trace
+				.Ray( finalTarget, finalTarget + Vector3.Down * 5000f )
+				.WithoutTag( "player" )
+				.WithoutTag( "projectile" )
+				.WithoutTag( "trigger" )
+				.Run();
+
+			if ( groundTrace.Hit )
+				finalTarget = groundTrace.EndPosition;
 		}
-		else
+
+		PhysicsTraceResult indicatorTrace = new PhysicsTraceResult
 		{
-			HideIndicator();
-		}
+			Hit = true,
+			EndPosition = finalTarget,
+			Normal = trace.Hit ? trace.Normal : Vector3.Up
+		};
+		UpdateIndicator( indicatorTrace );
 	}
 
 	private void UpdateIndicator( PhysicsTraceResult trace )
@@ -94,58 +115,27 @@ public sealed class SpellTargetIndicator : Component
 
 		if ( _indicatorInstance == null ) return;
 
-		// ������������� ������� � ����� ���������
 		_indicatorInstance.WorldPosition = trace.EndPosition;
-
-		// �������������� ����: ������ LookAt ���������� FromToRotation.
-		// ��� ����� ��������� ������ Up (��������� ����� �� �����) � ���������� ��� �� ������� �����.
-		// ���� ������ ������ ����� ������ ������ �� ���� � �������, �� ������������� �������.
 		_indicatorInstance.WorldRotation = Rotation.FromToRotation( Vector3.Up, trace.Normal );
 
 		var directVisual = _indicatorInstance.Children.Find( c => c.Name == "DirectPoint" );
 		var areaVisual = _indicatorInstance.Children.Find( c => c.Name == "AreaCircle" );
 
-		if ( _activeWeaponModule.MagicType == ProjectileType.Direct )
+		if ( _radiusProvider.MagicType == ProjectileType.Direct )
 		{
 			if ( directVisual != null ) directVisual.Enabled = true;
 			if ( areaVisual != null ) areaVisual.Enabled = false;
 		}
-		else if ( _activeWeaponModule.MagicType == ProjectileType.Meteor )
+		else if ( _radiusProvider.MagicType == ProjectileType.Meteor )
 		{
 			if ( directVisual != null ) directVisual.Enabled = false;
 			if ( areaVisual != null ) areaVisual.Enabled = true;
 
 			if ( areaVisual != null )
 			{
-				float maxRadius = 0f;
-
-				if ( _activeWeaponModule.Explosion.Enabled )
-				{
-					float checkRad = (float)_activeWeaponModule.Explosion.Radius;
-					if ( checkRad > maxRadius ) maxRadius = checkRad;
-				}
-
-				if ( _activeWeaponModule.Puddle.Enabled )
-				{
-					float checkRad = (float)_activeWeaponModule.Puddle.Radius;
-					if ( checkRad > maxRadius ) maxRadius = checkRad;
-				}
-
-				if ( _activeWeaponModule.Gas.Enabled )
-				{
-					float checkRad = (float)_activeWeaponModule.Gas.Radius;
-					if ( checkRad > maxRadius ) maxRadius = checkRad;
-				}
-
-				// ���������: ���� ������� ��� �� ������ ������������ �� ������� ������,
-				// ������ ������� ���������� ������ �� ���������, ����� �������� ������ � 0
-				if ( maxRadius <= 0f ) maxRadius = 150f;
-
-				float targetScale = maxRadius / 100f;
-
-				// ��� ��� ���� ������ ����� �������� ������, ��� Z �������� �� ��� �������.
-				// ������ � � 1f, ����� �������� �� ����������� � ������, � X � Y ����� �������� �� ������.
-				areaVisual.WorldScale = new Vector3( targetScale, targetScale, 1f );
+				float maxRadius = _radiusProvider.GetMaxAreaRadius();
+				float targetScale = maxRadius / CircleModelRadius;
+				areaVisual.LocalScale = new Vector3( targetScale, targetScale, targetScale );
 			}
 		}
 	}

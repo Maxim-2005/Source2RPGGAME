@@ -2424,7 +2424,6 @@
           "DirectMode": {
             "Damage": 40,
             "Speed": 1000,
-            "MaxDistance": 100,
             "ProjectileScale": 1,
             "HasDirectHit": true
           },
@@ -2446,6 +2445,7 @@
             "go": "4f483a84-6f94-4ef9-92d6-5b2ae2aa5c95"
           },
           "MagicType": "Meteor",
+          "MaxRange": 2500,
           "MeteorMode": {
             "Damage": 0,
             "SpawnHeight": 1200,
@@ -2552,11 +2552,11 @@
           "__guid": "acb24882-0694-4cd3-8c50-49e7ba0cdae0",
           "__enabled": true,
           "Flags": 0,
+          "CircleModelRadius": 100,
           "IndicatorPrefab": {
             "_type": "gameobject",
             "prefab": "prefabs/spellindicator.prefab"
           },
-          "MaxTraceDistance": 2500,
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
           "OnComponentEnabled": null,
@@ -4281,9 +4281,6 @@
       "CustomBounds": false
     },
     "GameObjectSystems": {
-      "Sandbox.MovieMaker.MovieRecorderSystem": {
-        "DisableClientRecording": false
-      },
       "Sandbox.Clutter.ClutterGridSystem": {
         "Storage": {
           "$blob": "a5be1baa-010e-4d5e-bbcd-5fa419ba0bd1"

@@ -13,16 +13,19 @@ public sealed class MagicProjectile : Component
 	private bool _isTracerMode = false;
 	private float _currentSpeed = 2500f;
 	private Vector3 _startPosition;
+	private float? _maxFlightDistance;
 
 	private HashSet<Guid> _hitTargetsThisSpawn = new HashSet<Guid>();
 
-	public void LaunchAsDirect( GameObject launcher, Vector3 direction, AttackProjectile config, float scale, float? overrideSpeed = null )
+	public void LaunchAsDirect( GameObject launcher, Vector3 direction, AttackProjectile config, float scale, float? overrideSpeed = null, float? flightDistance = null )
 	{
 		_launcher = launcher;
 		_config = config;
 		_isTracerMode = false;
 		_direction = direction.Normal;
 		_startPosition = GameObject.WorldPosition;
+
+		_maxFlightDistance = flightDistance;
 
 		if ( overrideSpeed.HasValue )
 		{
@@ -39,7 +42,7 @@ public sealed class MagicProjectile : Component
 		_launched = true;
 	}
 
-	public void LaunchAsMeteorTracer( GameObject launcher, Vector3 direction, AttackProjectile config )
+	public void LaunchAsMeteorTracer( GameObject launcher, Vector3 direction, AttackProjectile config, float flightDistance )
 	{
 		_launcher = launcher;
 		_direction = direction.Normal;
@@ -47,6 +50,7 @@ public sealed class MagicProjectile : Component
 		_isTracerMode = true;
 		_currentSpeed = 150000f;
 		_startPosition = GameObject.WorldPosition;
+		_maxFlightDistance = flightDistance;
 		_launched = true;
 
 		var visuals = GameObject.Components.Get<ProjectileVisuals>( FindMode.EverythingInSelfAndChildren );
@@ -57,19 +61,31 @@ public sealed class MagicProjectile : Component
 	{
 		if ( !_launched || _config == null ) return;
 
-		if ( !_isTracerMode )
-		{
-			float travelDistance = Vector3.DistanceBetween( _startPosition, GameObject.WorldPosition );
+		float travelDistance = Vector3.DistanceBetween( _startPosition, GameObject.WorldPosition );
 
-			if ( _config.MagicType == ProjectileType.Direct && travelDistance >= _config.DirectMode.MaxDistance )
-			{
-				TriggerAirExplosion();
-				return;
-			}
+		if ( _maxFlightDistance.HasValue && travelDistance >= _maxFlightDistance.Value )
+		{
+			HandleMaxDistanceReached();
+			return;
 		}
 
 		Vector3 currentPos = GameObject.WorldPosition;
-		Vector3 nextPosition = currentPos + _direction * _currentSpeed * Time.Delta;
+		float step = _currentSpeed * Time.Delta;
+
+		if ( _maxFlightDistance.HasValue )
+		{
+			float remaining = _maxFlightDistance.Value - travelDistance;
+			if ( step > remaining )
+				step = Math.Max( remaining, 0f );
+		}
+
+		if ( step <= 0f )
+		{
+			HandleMaxDistanceReached();
+			return;
+		}
+
+		Vector3 nextPosition = currentPos + _direction * step;
 
 		if ( !_isTracerMode && _config.MagicType == ProjectileType.Meteor )
 		{
@@ -115,6 +131,25 @@ public sealed class MagicProjectile : Component
 		}
 
 		GameObject.WorldPosition = nextPosition;
+	}
+
+	private void HandleMaxDistanceReached()
+	{
+		if ( _isTracerMode )
+		{
+			Vector3 targetFloorPos = GameObject.WorldPosition;
+			Vector3 skySpawnPos = targetFloorPos + ( Vector3.Up * _config.MeteorMode.SpawnHeight );
+			skySpawnPos -= _direction * ( _config.MeteorMode.SpawnHeight * 0.4f );
+			Vector3 fallDirection = (targetFloorPos - skySpawnPos).Normal;
+			var meteorGo = _config.ProjectilePrefab.Clone( skySpawnPos, Rotation.LookAt( fallDirection ) );
+			var meteorScript = meteorGo.Components.Get<MagicProjectile>();
+			meteorScript?.LaunchAsDirect( _launcher, fallDirection, _config, _config.MeteorMode.Scale, _config.MeteorMode.FallSpeed );
+			GameObject.Destroy();
+		}
+		else
+		{
+			TriggerAirExplosion();
+		}
 	}
 
 	private void TriggerAirExplosion()
@@ -176,7 +211,7 @@ public sealed class MagicProjectile : Component
 				_config.Gas
 			);
 
-			// --- ÏÐßÌÀß ÈÍÚÅÊÖÈß ÈÍÒÅÐÂÀËÀ ØËÅÉÔÀ ---
+			// --- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ---
 			var spawnerScript = rollingGo.Components.Get<ObjectTrailSpawner>();
 			if ( spawnerScript != null )
 			{
