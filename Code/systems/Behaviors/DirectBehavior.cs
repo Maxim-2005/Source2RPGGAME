@@ -46,11 +46,20 @@ public sealed class DirectBehavior : IProjectileBehavior
     public void OnImpact( MagicProjectile projectile, PhysicsTraceResult tr )
     {
         GameObject hitTarget = tr.Body?.GameObject;
+
+        if ( hitTarget == null )
+        {
+            projectile.SpawnZoneEffects( tr.EndPosition );
+            projectile.GameObject.Destroy();
+            return;
+        }
+
         if ( hitTarget.IsOwnedBy( projectile.Launcher ) ) return;
 
-        if ( hitTarget != null && hitTarget.Tags.Has( GameTags.Enemy ) )
+        if ( hitTarget.Tags.Has( GameTags.Enemy ) )
         {
             DamageService.ApplyDamage( hitTarget, projectile.Config.DirectMode.Damage, projectile.Launcher );
+            StatusEffectManager.TryApply( hitTarget, projectile.Config, projectile.Launcher );
         }
 
         projectile.SpawnZoneEffects( tr.EndPosition );

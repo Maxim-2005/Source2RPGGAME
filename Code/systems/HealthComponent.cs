@@ -1,4 +1,4 @@
-using Sandbox;
+п»їusing Sandbox;
 
 public sealed class HealthComponent : Component
 {
@@ -15,7 +15,7 @@ public sealed class HealthComponent : Component
 		if ( CurrentHealth <= 0 ) return;
 
 		CurrentHealth -= damageAmount;
-		Log.Info( $"{GameObject.Name} получил {damageAmount} урона от {attacker.Name}. Осталось ХП: {CurrentHealth}" );
+		Log.Info( $"{GameObject.Name} took {damageAmount} damage from {attacker.Name}. HP left: {CurrentHealth}" );
 
 		if ( CurrentHealth <= 0 )
 		{
@@ -25,9 +25,9 @@ public sealed class HealthComponent : Component
 
 	private void Die()
 	{
-		Log.Info( $"{GameObject.Name} погиб!" );
+		Log.Info( $"{GameObject.Name} died!" );
 
-		// Здесь в будущем будет логика смерти: спавн лута, удаление объекта или запуск регдолла
+		// All death-related things should be here: death sound, spawn death effects
 		GameObject.Destroy();
 	}
 }

@@ -39,7 +39,7 @@
     "DebugTime": 1
   },
   "Puddle": {
-    "Enabled": true,
+    "Enabled": false,
     "DamagePerTick": 8,
     "TickInterval": 0.5,
     "Radius": 100,
@@ -47,12 +47,20 @@
     "Lifetime": 5
   },
   "Gas": {
-    "Enabled": true,
+    "Enabled": false,
     "DamagePerTick": 12,
     "TickInterval": 0.4,
     "Radius": 140,
     "Lifetime": 6
   },
+  "StatusEffects": [
+    {
+      "Id": "burn",
+      "Duration": 3,
+      "Magnitude": 5,
+      "TickInterval": 1
+    }
+  ],
   "__references": [],
   "__version": 0
 }

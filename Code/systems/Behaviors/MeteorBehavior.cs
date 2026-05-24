@@ -66,6 +66,7 @@ public sealed class MeteorBehavior : IProjectileBehavior
         if ( _hitTargetsThisSpawn.Contains( target.Id ) ) return;
         _hitTargetsThisSpawn.Add( target.Id );
         DamageService.ApplyDamage( target, projectile.Config.MeteorMode.Damage, projectile.Launcher );
+        StatusEffectManager.TryApply( target, projectile.Config, projectile.Launcher );
     }
 
     public void HandleMaxDistance( MagicProjectile projectile )

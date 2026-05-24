@@ -25,6 +25,9 @@ public class SpellDefinition : GameResource
 	public PuddleSettings Puddle { get; set; } = new();
 	public GasSettings Gas { get; set; } = new();
 
+	[Category( "Status Effects" )]
+	public StatusEffectApply[] StatusEffects { get; set; } = Array.Empty<StatusEffectApply>();
+
 	public IProjectileBehavior CreateBehavior()
 	{
 		return MagicType switch

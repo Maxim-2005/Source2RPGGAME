@@ -1,4 +1,4 @@
-using Sandbox;
+﻿using Sandbox;
 
 public sealed class WeaponItem : Component
 {
@@ -25,7 +25,7 @@ public sealed class WeaponItem : Component
 
 		if ( _itemRenderer == null )
 		{
-			Log.Warning( $"�� ������� {GameObject.Name} ��� ModelRenderer!" );
+			Log.Warning( $"Object {GameObject.Name} has no ModelRenderer!" );
 		}
 	}
 

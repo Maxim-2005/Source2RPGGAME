@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Sandbox;
 
@@ -24,7 +24,7 @@ namespace MagicSystem
 			_timeSinceSpawn = 0f;
 			ValidateDefaults();
 			if ( ShowDebug )
-				Log.Info( $"[{DebugPrefix}] Скрипт {GetType().Name} запущен! Радиус: {Radius}" );
+				Log.Info( $"[{DebugPrefix}] Script {GetType().Name} started! Radius: {Radius}" );
 		}
 
 		protected virtual void ValidateDefaults()
@@ -107,7 +107,7 @@ namespace MagicSystem
 		private void ApplyDamage( GameObject target, GameObject launcher )
 		{
 			if ( ShowDebug )
-				Log.Info( $"[{DebugPrefix}] Урон по: {target.Name} от {launcher?.Name}" );
+				Log.Info( $"[{DebugPrefix}] Damage to: {target.Name} from {launcher?.Name}" );
 
 			DamageService.ApplyDamage( target, DamagePerTick, launcher );
 		}

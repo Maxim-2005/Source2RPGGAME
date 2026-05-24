@@ -69,6 +69,16 @@ namespace MagicSystem
 		[Property] public float Lifetime { get; set; } = 6f;
 	}
 
+	[System.Serializable]
+	public record struct StatusEffectApply
+	{
+		public StatusEffectApply() { }
+		public string Id { get; set; } = "burn";
+		public float Duration { get; set; } = 3f;
+		public float Magnitude { get; set; } = 5f;
+		public float TickInterval { get; set; } = 1f;
+	}
+
 	public record struct TrailSettings
 	{
 		public PuddleSettings Puddle { get; set; }
