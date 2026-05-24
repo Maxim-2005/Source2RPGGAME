@@ -23,8 +23,8 @@ public sealed class BoxDamageArea : BaseAttackModule
 
 	private GameObject AttackOriginPoint => AttackOrigin != null ? AttackOrigin : GameObject;
 
-	private readonly HashSet<GameObject> _hitTargetsThisAttack = new();
-	private TimeSince _timeSinceLastAttack = 999f; // ������ ��������
+	[Hide] private readonly HashSet<GameObject> _hitTargetsThisAttack = new();
+	[Hide] private TimeSince _timeSinceLastAttack = 999f; // ������ ��������
 
 	protected override void OnStart()
 	{
@@ -69,24 +69,9 @@ public sealed class BoxDamageArea : BaseAttackModule
 
 	private async Task ProcessSwing( GameObject attacker, SkinnedModelRenderer playerModel )
 	{
-		try
+		_timeSinceLastAttack = 0;
+		await RunAttackAsync( PreAttackDelay, playerModel, "b_attack", async () =>
 		{
-			IsAttacking = true;
-			_timeSinceLastAttack = 0;
-
-			if ( playerModel != null )
-			{
-				playerModel.Set( "b_attack", true );
-			}
-
-			await Task.DelaySeconds( PreAttackDelay );
-
-			if ( !IsValid || !GameObject.IsValid() || GameObject.Parent == null )
-			{
-				IsAttacking = false;
-				return;
-			}
-
 			ResetTargets();
 			IsAttackActive = true;
 
@@ -100,13 +85,7 @@ public sealed class BoxDamageArea : BaseAttackModule
 			}
 
 			IsAttackActive = false;
-			IsAttacking = false;
-		}
-		catch ( Exception e )
-		{
-			Log.Error( e );
-			IsAttacking = false;
-		}
+		} );
 	}
 
 
@@ -146,7 +125,7 @@ public sealed class BoxDamageArea : BaseAttackModule
 			GameObject target = hitResult.Body?.GameObject;
 			if ( target == null ) continue;
 
-			if ( target == attacker || target == GameObject || target.Name.Contains( "Player" ) ) continue;
+			if ( target == attacker || target == GameObject || target.Tags.Has( GameTags.Player ) ) continue;
 			if ( !target.Tags.Has( GameTags.Enemy ) ) continue;
 
 			if ( !_hitTargetsThisAttack.Contains( target ) )

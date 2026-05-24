@@ -39,7 +39,7 @@
     "Enabled": true,
     "Damage": 40,
     "Radius": 180,
-    "DebugTime": 2
+    "DebugTime": 1
   },
   "Puddle": {
     "Enabled": false,

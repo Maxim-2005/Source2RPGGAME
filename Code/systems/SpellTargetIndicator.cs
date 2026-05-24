@@ -10,11 +10,11 @@ public sealed class SpellTargetIndicator : Component
 	[Property, Group( "Indicator Setup" )] public string DirectPointName { get; set; } = "DirectPoint";
 	[Property, Group( "Indicator Setup" )] public string AreaCircleName { get; set; } = "AreaCircle";
 
-	private GameObject _indicatorInstance;
-	private IAreaRadiusProvider _radiusProvider;
-	private WeaponItem _weaponItem;
-	private CameraComponent _camera;
-	private bool _isInitialized = false;
+	[Hide] private GameObject _indicatorInstance;
+	[Hide] private IAreaRadiusProvider _radiusProvider;
+	[Hide] private WeaponItem _weaponItem;
+	[Hide] private CameraComponent _camera;
+	[Hide] private bool _isInitialized = false;
 
 	protected override void OnStart()
 	{

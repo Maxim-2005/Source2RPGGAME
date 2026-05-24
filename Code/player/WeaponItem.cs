@@ -8,14 +8,13 @@ public sealed class WeaponItem : Component
 
 	[Property, Group( "Throw Settings" )] public float ThrowForce { get; set; } = 400f;
 
-	private SkinnedModelRenderer _playerModel;
-	private string _attachmentName = "";
-	private bool _isHeld = false;
+	[Hide] private SkinnedModelRenderer _playerModel;
+	[Hide] private string _attachmentName = "";
+	[Hide] private bool _isHeld = false;
 	public bool IsHeld => _isHeld;
-	private ModelRenderer _itemRenderer;
+	[Hide] private ModelRenderer _itemRenderer;
 
-	// ������ �� ������ ����� (���, �����, ��� � �� �����)
-	private BaseAttackModule _attackModule;
+	[Hide] private BaseAttackModule _attackModule;
 
 	protected override void OnStart()
 	{
@@ -95,7 +94,7 @@ public sealed class WeaponItem : Component
 		var rb = GameObject.Components.Get<Rigidbody>( FindMode.EverythingInSelfAndChildren );
 		if ( rb != null ) rb.Enabled = false;
 
-		GameObject.Tags.Add( "trigger" );
+		GameObject.Tags.Add( GameTags.Trigger );
 
 		_playerModel.Set( "holdtype", HoldType );
 		_playerModel.Set( "holdtype_handedness", 1 );
@@ -119,7 +118,7 @@ public sealed class WeaponItem : Component
 		GameObject.Parent = null;
 		GameObject.WorldPosition = dropPosition;
 		GameObject.WorldRotation = dropRotation;
-		GameObject.Tags.Remove( "trigger" );
+		GameObject.Tags.Remove( GameTags.Trigger );
 
 		_isHeld = false;
 		_playerModel = null;

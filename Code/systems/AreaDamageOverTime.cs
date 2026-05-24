@@ -16,8 +16,8 @@ namespace MagicSystem
 		protected abstract string DebugPrefix { get; }
 		protected abstract Color DebugColor { get; }
 
-		private RealTimeSince _timeSinceSpawn;
-		private Dictionary<GameObject, float> _targetTimers = new();
+		[Hide] private RealTimeSince _timeSinceSpawn;
+		[Hide] private Dictionary<GameObject, float> _targetTimers = new();
 
 		protected override void OnStart()
 		{

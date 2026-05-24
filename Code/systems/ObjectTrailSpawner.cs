@@ -9,9 +9,9 @@ public sealed class ObjectTrailSpawner : Component
 	// ���� �������� ����� ����������� �� MagicProjectile ��� ������
 	[Property, Group( "Settings" )] public float SpawnInterval { get; set; } = 0.18f;
 
-	private RealTimeSince _timeSinceLastSpawn;
-	private IGroundTraceable _traceableObject;
-	private ITrailEffectProvider _trailProvider;
+	[Hide] private RealTimeSince _timeSinceLastSpawn;
+	[Hide] private IGroundTraceable _traceableObject;
+	[Hide] private ITrailEffectProvider _trailProvider;
 
 	protected override void OnStart()
 	{
@@ -44,7 +44,7 @@ public sealed class ObjectTrailSpawner : Component
 		var downTrace = Scene.PhysicsWorld.Trace
 			.Ray( spawnPosition, spawnPosition + Vector3.Down * 200f )
 			.WithAnyTags( "world", "solid", "map", "static" )
-			.WithoutTags( "player", GameTags.Projectile, "trigger" )
+			.WithoutTags( GameTags.Player, GameTags.Projectile, GameTags.Trigger )
 			.Run();
 
 		Vector3 finalSpawnPos = downTrace.Hit ? downTrace.EndPosition : spawnPosition;

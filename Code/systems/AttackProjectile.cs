@@ -24,7 +24,7 @@ public sealed class AttackProjectile : BaseAttackModule, IAreaRadiusProvider
 
 	public float GetMaxAreaRadius() => Spell?.GetMaxAreaRadius() ?? 150f;
 
-	private TimeSince _timeSinceLastAttack = 100f;
+	[Hide] private TimeSince _timeSinceLastAttack = 100f;
 
 	public override bool TryAttack( GameObject attacker, SkinnedModelRenderer playerModel )
 	{
@@ -38,20 +38,9 @@ public sealed class AttackProjectile : BaseAttackModule, IAreaRadiusProvider
 
 	private async Task ProcessShoot( GameObject attacker, SkinnedModelRenderer playerModel )
 	{
-		try
+		_timeSinceLastAttack = 0;
+		await RunAttackAsync( PreAttackDelay, playerModel, "b_attack", async () =>
 		{
-			IsAttacking = true;
-			_timeSinceLastAttack = 0;
-
-			if ( playerModel != null ) playerModel.Set( "b_attack", true );
-			await Task.DelaySeconds( PreAttackDelay );
-
-			if ( !IsValid || !GameObject.IsValid() || GameObject.Parent == null )
-			{
-				IsAttacking = false;
-				return;
-			}
-
 			GameObject origin = LaunchPoint != null ? LaunchPoint : GameObject;
 			Vector3 shootDirection;
 			float flightDistance = MaxRange;
@@ -100,13 +89,6 @@ public sealed class AttackProjectile : BaseAttackModule, IAreaRadiusProvider
 					projectileScript?.LaunchAsMeteorTracer( attacker, shootDirection, this, flightDistance );
 				}
 			}
-
-			IsAttacking = false;
-		}
-		catch ( Exception e )
-		{
-			Log.Error( e );
-			IsAttacking = false;
-		}
+		} );
 	}
 }

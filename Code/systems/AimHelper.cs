@@ -17,7 +17,7 @@ public static class AimHelper
 
 		var cameraTrace = scene.PhysicsWorld.Trace
 			.Ray( traceStart, traceEnd )
-			.WithoutTags( "player", GameTags.Projectile, "trigger" )
+			.WithoutTags( GameTags.Player, GameTags.Projectile, GameTags.Trigger )
 			.Run();
 
 		Vector3 rawTarget = cameraTrace.Hit ? cameraTrace.EndPosition : traceEnd;
@@ -31,7 +31,7 @@ public static class AimHelper
 		{
 			var groundTrace = scene.PhysicsWorld.Trace
 				.Ray( targetPoint, targetPoint + Vector3.Down * 5000f )
-				.WithoutTags( "player", GameTags.Projectile, "trigger" )
+				.WithoutTags( GameTags.Player, GameTags.Projectile, GameTags.Trigger )
 				.Run();
 
 			if ( groundTrace.Hit )

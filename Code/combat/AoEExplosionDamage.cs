@@ -3,14 +3,14 @@ using Sandbox;
 
 public sealed class AoEExplosionDamage : Component
 {
-	public float Damage { get; set; } = 40f;
-	public float Radius { get; set; } = 150f;
-	public float ExplosionDebugLifetime { get; set; } = 0.5f;
-	public bool ShowDebug { get; set; } = true;
+	[Property, Group( "Explosion Settings" )] public float Damage { get; set; } = 40f;
+	[Property, Group( "Explosion Settings" )] public float Radius { get; set; } = 150f;
+	[Property, Group( "Explosion Settings" )] public float ExplosionDebugLifetime { get; set; } = 0.5f;
+	[Property, Group( "Explosion Settings" )] public bool ShowDebug { get; set; } = true;
 	[Hide] public GameObject Launcher { get; set; }
 
-	private bool _hasExploded = false;
-	private TimeSince _timeSinceExplosion = 0f;
+	[Hide] private bool _hasExploded = false;
+	[Hide] private TimeSince _timeSinceExplosion = 0f;
 
 	public void Explode()
 	{
