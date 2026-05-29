@@ -29,6 +29,10 @@ public sealed class AttackProjectile : BaseAttackModule, IAreaRadiusProvider
 	{
 		if ( _timeSinceLastAttack < AttackCooldown || IsAttacking ) return false;
 
+		var stats = attacker?.Components.Get<PlayerStats>();
+		if ( stats is not null && !stats.TrySpendMana( Spell?.ManaCost ?? 0f ) )
+			return false;
+
 		_ = ProcessShoot( attacker, playerModel );
 		return true;
 	}

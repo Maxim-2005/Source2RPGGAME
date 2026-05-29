@@ -4,58 +4,7 @@
 	m_nodeManager = 
 	{
 		_class = "CAnimNodeManager"
-		m_nodes = 
-		[
-			{
-				key = 
-				{
-					m_id = 478116197
-				}
-				value = 
-				{
-					_class = "CRootAnimNode"
-					m_sName = "Unnamed"
-					m_vecPosition = [ -16.0, -64.0 ]
-					m_nNodeID = 
-					{
-						m_id = 478116197
-					}
-					m_sNote = ""
-					m_inputConnection = 
-					{
-						m_nodeID = 
-						{
-							m_id = 1941136287
-						}
-						m_outputID = 
-						{
-							m_id = 4294967295
-						}
-					}
-				}
-			},
-			{
-				key = 
-				{
-					m_id = 1941136287
-				}
-				value = 
-				{
-					_class = "CSequenceAnimNode"
-					m_sName = "Unnamed"
-					m_vecPosition = [ -343.0, -94.0 ]
-					m_nNodeID = 
-					{
-						m_id = 1941136287
-					}
-					m_sNote = ""
-					m_tagSpans = [  ]
-					m_sequenceName = "PLAYER_IDLE"
-					m_playbackSpeed = 1.0
-					m_bLoop = true
-				}
-			},
-		]
+		m_nodes = [  ]
 	}
 	m_pParameterList = 
 	{
@@ -97,15 +46,12 @@
 		_class = "CActivityValueList"
 		m_activities = [  ]
 	}
-	m_previewModels = 
-	[
-		"models/creatures/player.vmdl",
-	]
+	m_previewModels = [  ]
 	m_boneMergeModels = [  ]
 	m_cameraSettings = 
 	{
 		m_flFov = 60.0
-		m_sLockBoneName = "spine"
+		m_sLockBoneName = ""
 		m_bLockCamera = false
 		m_bViewModelCamera = false
 	}
